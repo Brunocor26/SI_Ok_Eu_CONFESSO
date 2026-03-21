@@ -56,6 +56,9 @@ fix: corrigir verificação de assinatura RSA
 docs: atualizar diagrama de arquitetura
 ```
 
+## Importante!
+- Adicionar sempre as dependências novas nos requirements.txt!
+
 ## Segurança
 
 - **Nunca** colocar chaves, passwords ou secrets no código
