@@ -12,7 +12,7 @@ Projeto no âmbito da UC da UBI: Segurança Informática.
 | Wireframes das páginas | @henriquelaia | Esboços de: registo, login, envio, decifra (confirmação dupla), verificar recibo | Wireframes aprovados em reunião | ✅ |
 | Configurar serviço de email | @Francisco-Branco-2 | Instalar MailHog/Mailpit, testar envio de email local, definir template base | Email de teste enviado e recebido | ⬜ |
 | PoC das primitivas crypto | @Vascorc | Provas de conceito: AES-256-CTR, PBKDF2, SHA256withRSA, AES-256-CBC para chave privada | Cada primitiva testada individualmente | ⬜ |
-| Criar estrutura de testes | @Brunocor26 | Configurar framework de testes, criar primeiros testes unitários esqueleto, definir formato de relatório | Framework de testes a correr (mesmo que vazia) | ⬜ |
+| Criar estrutura de testes | @Brunocor26 | Configurar framework de testes, criar primeiros testes unitários esqueleto, definir formato de relatório | Framework de testes a correr (mesmo que vazia) | ✅ |
 
 ## Estrutura planeada do projeto
 
