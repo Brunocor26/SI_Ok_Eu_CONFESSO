@@ -1,0 +1,7 @@
+# Crypto
+pycryptodom
+
+# Testing
+pytest
+pytest-flask
+pytest-cov
