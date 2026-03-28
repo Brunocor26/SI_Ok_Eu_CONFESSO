@@ -3,7 +3,7 @@ sudo usermod -aG docker $USER
 newgrp docker
 
 # Entrar na pasta
-cd /home/fango/ServicoMail
+ServicoMail
 
 # Ligar Docker com Mailpit
 docker-compose up -d
