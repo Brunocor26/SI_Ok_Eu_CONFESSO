@@ -1,0 +1,11 @@
+services:
+  mailpit:
+    image: axllent/mailpit
+    container_name: mailpit_server
+    restart: unless-stopped
+    ports:
+      - "8025:8025" # Porta para a Interface Web (Dashboard)
+      - "1025:1025" # Porta para o Servidor SMTP (Envio)
+    environment:
+      # Opcional: Define um fuso horário
+      - TZ=Europe/Lisbon
