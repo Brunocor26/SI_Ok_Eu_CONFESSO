@@ -7,7 +7,7 @@ Projeto no âmbito da UC da UBI: Segurança Informática.
 |--------|-------------|-----------|----------------------|-----------|
 | Escolher stack e ferramentas | Todos | Reunião: linguagem, framework, BD, biblioteca crypto. | Stack documentado e aprovado por todos | ✅ |
 | Configurar repo GitHub | @Brunocor26 | Criar organização/repo, GitHub Projects/Issues, regras de PR | Todos com acesso e primeira Issue criada | ✅  |
-| Arquitetura e diagramas | @AlexandreMinhoto | Diagrama de componentes, fluxo completo de cifragem/decifragem, diagrama de sequência dos cenários 1 e 2 | Documento de arquitetura (1-2 pág.) no repo | ⬜ |
+| Arquitetura e diagramas | @AlexandreMinhoto | Diagrama de componentes, fluxo completo de cifragem/decifragem, diagrama de sequência dos cenários 1 e 2 | Documento de arquitetura (1-2 pág.) no repo | ✅ |
 | Schema da base de dados | @DanielBasilioFerreira | Desenhar tabelas: users, messages, receipts, public_keys. Validar com Bruno | Schema ER aprovado, comentado no repo | ⬜ |
 | Wireframes das páginas | @henriquelaia | Esboços de: registo, login, envio, decifra (confirmação dupla), verificar recibo | Wireframes aprovados em reunião | ✅ |
 | Configurar serviço de email | @Francisco-Branco-2 | Instalar MailHog/Mailpit, testar envio de email local, definir template base | Email de teste enviado e recebido | ⬜ |
