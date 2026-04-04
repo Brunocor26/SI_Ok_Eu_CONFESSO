@@ -15,7 +15,7 @@ Projeto no âmbito da UC da UBI: Segurança Informática.
 | Criar estrutura de testes | @Brunocor26 | Configurar framework de testes, criar primeiros testes unitários esqueleto, definir formato de relatório | Framework de testes a correr (mesmo que vazia) | ✅ |
 
 ## Estrutura Planeada do Projeto
-
+``
 SI_Ok_Eu_CONFESSO/
 │
 ├── backend/
@@ -70,6 +70,7 @@ SI_Ok_Eu_CONFESSO/
 ├── .gitignore
 ├── README.md
 └── docker-compose.yml           # opcional: PostgreSQL + Mailpit
+```
 
 ## ⚙️ Setup e Instalação
 
