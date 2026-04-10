@@ -1,5 +1,9 @@
 # Crypto
-pycryptodom
+cryptography>=42.0.0
+
+# Web
+flask>=3.0.0
+flask-migrate
 
 # Testing
 pytest

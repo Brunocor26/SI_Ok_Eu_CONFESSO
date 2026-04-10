@@ -1,12 +1,24 @@
+"""
+Teste de cifragem/decifragem básico (skeleton atualizado).
+Ver test_crypto.py para a suite de testes completa.
+"""
+
+from app.services.crypto import (
+    decrypt_body,
+    derive_key,
+    encrypt_body,
+    generate_code,
+    generate_salt,
+)
+
+
 def test_cypher_and_decypher():
-    #some plaintext
     msg = "Hello world"
-    key = get_key("somekey1364")
+    code = generate_code()
+    salt = generate_salt()
+    key = derive_key(code, salt)
 
-    #cypher
-    cyphertext = cypher(msg, key)
+    ciphertext_b64, nonce_b64 = encrypt_body(msg, key)
 
-    #check if it really cyphered it
-    assert msg!=cyphertext
-    #check if when we decypher it is correct (assume its symmetric)
-    assert msg == decypher(cyphertext, key)
+    assert ciphertext_b64 != msg
+    assert decrypt_body(ciphertext_b64, key, nonce_b64) == msg
