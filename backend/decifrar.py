@@ -9,6 +9,35 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 # Assinatura Digital: A função gerar_recibo_digital utiliza SHA256 com RSA, o que corresponde ao requisito SHA256withRSA mencionado no enunciado. 
 # Verificação: A função de verificação permite ao emissor validar a prova de leitura, fechando o ciclo de Não-Repúdio. 
 
+
+#   Usada no registo: Transforma a chave RSA em bytes, cifra com AES-256-CBC 
+#   e devolve os bytes para serem gravados no ficheiro .pem.
+def cifrar_chave_privada(chave_privada_obj, password_16):
+
+    # 1. Transformar o objeto da chave em bytes PEM (sem password interna)
+    pem_original = chave_privada_obj.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+
+    # 2. Preparar a cifra AES-256-CBC
+    chave_aes = derivar_chave_pbkdf2(password_16)
+    iv = os.urandom(16) # Gerar um IV aleatório (vital para CBC)
+    
+    # 3. Adicionar Padding (PKCS7) porque o CBC exige blocos de 16 bytes
+    padder = sym_padding.PKCS7(128).padder()
+    dados_padded = padder.update(pem_original) + padder.finalize()
+
+    # 4. Cifrar
+    cipher = Cipher(algorithms.AES(chave_aes), modes.CBC(iv))
+    encryptor = cipher.encryptor()
+    conteudo_cifrado = encryptor.update(dados_padded) + encryptor.finalize()
+
+    # 5. O ficheiro final será: IV (16 bytes) + Conteúdo Cifrado
+    return iv + conteudo_cifrado
+
+
 #     Transforma a password ou o código de 32 chars numa chave de 32 bytes (256 bits).
 def derivar_chave_pbkdf2(texto_secreto, salt=b'salt_projeto_si_2026'):
 
