@@ -10,9 +10,10 @@ def test_register_creates_user_and_keys(app):
     """
     # Arrange (Não é preciso arranjo além da app inicializada)
     password = "minha_pass_super_segura_123456"
+    username = "testuser"
 
     # Act
-    user = register_user(password)
+    user = register_user(username, password)
 
     # Assert - Verificar se o utilizador foi criado
     assert user.id is not None

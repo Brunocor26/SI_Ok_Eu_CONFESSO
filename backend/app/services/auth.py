@@ -1,22 +1,47 @@
 from app.extensions import db
 from app.models import User, UserKey
-from app.services.crypto import hash_password, generate_rsa_key_pair, encrypt_private_key
+from app.services.crypto import hash_password, derive_key, PBKDF2_ITERATIONS, generate_rsa_key_pair, encrypt_private_key
+import base64
+import hmac
 
-def register_user(password: str) -> User:
+def verify_login(username: str, password: str) -> User | None:
     """
-    Registers a new user given a password.
+    Verifica as credenciais de um utilizador.
+    """
+    user = db.session.query(User).filter_by(username=username).first()
+    if not user:
+        return None
+        
+    salt = base64.b64decode(user.password_salt)
+    derived_key = derive_key(password, salt)
+    derived_hash = base64.b64encode(derived_key).decode("ascii")
+    
+    if hmac.compare_digest(user.password_hash, derived_hash):
+        return user
+    return None
+
+def register_user(username: str, password: str) -> User:
+    """
+    Registers a new user given a username and password.
     1. Hashes the password and saves the User.
     2. Generates an RSA key pair.
     3. Encrypts the private key with the user's password.
     4. Saves the UserKey.
     """
+    if not username or not username.strip():
+        raise ValueError("O nome de utilizador não pode ser vazio.")
     if not password or len(password) < 16:
         raise ValueError("A password deve ter pelo menos 16 caracteres.")
+        
+    # Verificar se utilizador já existe
+    if db.session.query(User).filter_by(username=username).first():
+        raise ValueError("Nome de utilizador já em uso.")
 
     # 1. Hashing do password do utilizador
     password_hash, password_salt = hash_password(password)
     
     user = User(
+        username=username,
         password_hash=password_hash,
         password_salt=password_salt
     )

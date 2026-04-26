@@ -9,6 +9,7 @@ class User(db.Model):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     password_salt: Mapped[str] = mapped_column(Text, nullable=False)
     hash_algorithm: Mapped[str] = mapped_column(String, default="pbkdf2_sha256", server_default="pbkdf2_sha256", nullable=False)

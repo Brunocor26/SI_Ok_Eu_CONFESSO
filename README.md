@@ -1,75 +1,55 @@
 # Descrição
 Projeto no âmbito da UC da UBI: Segurança Informática.
 
-## Tarefas
-
-| Tarefa | Responsável | Descrição | Critério de Conclusão | Concluído |
-|--------|-------------|-----------|----------------------|-----------|
-| Escolher stack e ferramentas | Todos | Reunião: linguagem, framework, BD, biblioteca crypto. | Stack documentado e aprovado por todos | ✅ |
-| Configurar repo GitHub | @Brunocor26 | Criar organização/repo, GitHub Projects/Issues, regras de PR | Todos com acesso e primeira Issue criada | ✅  |
-| Arquitetura e diagramas | @AlexandreMinhoto | Diagrama de componentes, fluxo completo de cifragem/decifragem, diagrama de sequência dos cenários 1 e 2 | Documento de arquitetura (1-2 pág.) no repo | ✅ |
-| Schema da base de dados | @DanielBasilioFerreira | Desenhar tabelas: users, messages, receipts, public_keys. Validar com Bruno | Schema ER aprovado, comentado no repo | ✅ |
-| Wireframes das páginas | @henriquelaia | Esboços de: registo, login, envio, decifra (confirmação dupla), verificar recibo | Wireframes aprovados em reunião | ✅ |
-| Configurar serviço de email | @Francisco-Branco-2 | Instalar MailHog/Mailpit, testar envio de email local, definir template base | Email de teste enviado e recebido | ✅ |
-| PoC das primitivas crypto | @Vascorc | Provas de conceito: AES-256-CTR, PBKDF2, SHA256withRSA, AES-256-CBC para chave privada | Cada primitiva testada individualmente | ✅ |
-| Criar estrutura de testes | @Brunocor26 | Configurar framework de testes, criar primeiros testes unitários esqueleto, definir formato de relatório | Framework de testes a correr (mesmo que vazia) | ✅ |
-
-## Estrutura Planeada do Projeto
-```
+## Estrutura do Projeto
+```text
 SI_Ok_Eu_CONFESSO/
 │
 ├── backend/
 │   ├── app/
-│   │   ├── __init__.py          # create_app(), inicializa Flask
-│   │   ├── config.py            # configurações (dev, test, prod)
-│   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   ├── user.py          # tabela users
-│   │   │   ├── message.py       # tabela messages
-│   │   │   ├── receipt.py       # tabela receipts
-│   │   │   └── public_key.py    # tabela public_keys
+│   │   ├── __init__.py          # Inicializa a App e regista Blueprints
+│   │   ├── config.py            # Configurações globais
+│   │   ├── extensions.py        # SQLAlchemy e Flask-Migrate
+│   │   ├── models.py            # Modelos BD (User, UserKey, Message, Receipt)
 │   │   ├── routes/
 │   │   │   ├── __init__.py
-│   │   │   ├── auth.py          # /register, /login
-│   │   │   ├── messages.py      # /send, /decrypt
-│   │   │   └── receipts.py      # /confirm, /verify
-│   │   ├── services/
-│   │   │   ├── crypto.py        # AES, RSA, PBKDF2, HMAC
-│   │   │   ├── email.py         # envio de emails
-│   │   │   └── receipt.py       # geração e verificação de recibos
-│   │   └── utils/
-│   │       └── helpers.py       # funções auxiliares genéricas
+│   │   │   ├── auth.py          # /api/auth/register, /api/auth/login
+│   │   │   ├── messages.py      # /api/messages/send, /api/messages/decrypt
+│   │   │   └── receipts.py      # /api/receipts/verify
+│   │   └── services/
+│   │       ├── crypto.py        # Primitivas (AES-CTR, RSA, PBKDF2)
+│   │       ├── email.py         # Envio de emails local (Mailpit)
+│   │       └── auth.py          # Registo e autenticação (Hashes e validação)
 │   │
 │   ├── tests/
-│   │   ├── conftest.py          # fixtures globais
-│   │   ├── test_crypto.py       # testes das primitivas crypto
-│   │   ├── test_auth.py         # testes de registo/login
-│   │   ├── test_messages.py     # testes de envio/decifragem
-│   │   └── test_receipts.py     # testes de recibos
+│   │   ├── conftest.py          # Fixtures do Pytest
+│   │   ├── test_crypto.py       # Cobertura sobre encriptação AES e RSA
+│   │   ├── test_register.py     # Integração do registo e chaves
+│   │   └── test_email.py        # Cobertura do sistema de alertas mailpit
 │   │
-│   ├── migrations/              # Flask-Migrate (gerado automaticamente)
-│   ├── requirements.txt
-│   ├── .env.example
-│   └── run.py                   # ponto de entrada: flask run
+│   ├── instance/
+│   │   └── app.db               # Base de dados SQLite (Local Development)
+│   ├── migrations/              # Controlo de versões (Alembic)
+│   └── requirements.txt
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── Register.jsx     # página de registo
-│   │   │   ├── Login.jsx        # página de login
-│   │   │   ├── SendMessage.jsx  # página de envio
-│   │   │   ├── DecryptMessage.jsx # página de decifragem + confirmação dupla
-│   │   │   └── VerifyReceipt.jsx  # página de verificação de recibo
-│   │   ├── components/          # componentes reutilizáveis
+│   │   │   ├── Register.jsx     # Permite criar e gerar uma passe
+│   │   │   ├── Login.jsx        # Efetua autenticação
+│   │   │   ├── SendMessage.jsx  # Pág. de envio seguro de mensagens
+│   │   │   └── DecryptMessage.jsx # Desencriptar e ler com código alertado
 │   │   ├── services/
-│   │   │   └── api.js           # chamadas à API Flask
+│   │   │   └── api.js           # Endpoints Fetch API (Ligação Frontend-Backend)
+│   │   ├── index.css            # Estilos tail-made
 │   │   └── App.jsx
 │   ├── package.json
-│   └── vite.config.js
+│   └── vite.config.js           # Server Web com Proxy /api para o Backend (Porta 5000)
 │
+├── ServicoEmail/                
+│   └── docker-compose.yml       # Ferramenta para intercetar o e-mail de mensagens Cifradas (Mailpit)
 ├── .gitignore
-├── README.md
-└── docker-compose.yml           # opcional: PostgreSQL + Mailpit
+└── README.md
 ```
 
 ## ⚙️ Setup e Instalação
@@ -77,7 +57,7 @@ SI_Ok_Eu_CONFESSO/
 ### Pré-requisitos
 - Python 3.12+
 - Node.js 18+
-- PostgreSQL
+- Docker (Opcional, mas recomendado para o ambiente de E-mail)
 - Git
 
 ---
@@ -100,30 +80,50 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configurar variáveis de ambiente
-
+Por omissão, o backend funciona com uma base de dados SQLite local, pelo que não é estritamente necessário configurar variáveis de ambiente para a sua execução inicial. Caso pretenda, pode configurar a variável `SECRET_KEY` ou alterar o `DATABASE_URL` no ficheiro `backend/app/config.py`.
 
 ### 4. Configurar a base de dados
-
+Com o ambiente virtual ativado, aplique as migrações para criar e atualizar as tabelas na base de dados (SQLite por omissão):
+```bash
+cd backend
+flask --app app db upgrade
+```
 
 ### 5. Configurar o frontend (React)
-
+Instale as dependências associadas ao frontend:
+```bash
+cd frontend
+npm install
+```
 
 ### 6. Iniciar o Mailpit (email local)
-
+Para receber emails num ambiente de desenvolvimento, utilize o Mailpit através do Docker Compose:
+```bash
+cd ServicoEmail
+docker compose up -d
+```
 
 ### 7. Correr a aplicação
+São necessários dois terminais distintos para correr o backend e o frontend.
+
 ```bash
 # Terminal 1 - Backend
-source venv/bin/activate
+cd backend
+source ../venv/bin/activate  # em Windows: ..\venv\Scripts\activate
+flask --app app run --debug
+```
 
-...
+```bash
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
 ```
 
 ### 8. Correr os testes
 ```bash
-source venv/bin/activate
-pytest
-pytest --cov=app    # com relatório de cobertura
+cd backend
+pytest tests/
+pytest --cov=app tests/    # com relatório de cobertura
 ```
 
 ---
@@ -131,6 +131,6 @@ pytest --cov=app    # com relatório de cobertura
 ### URLs locais
 | Serviço | URL |
 |---|---|
-| Frontend | - |
-| Backend API | - |
-| Mailpit | - |
+| Frontend | http://localhost:5173 |
+| Backend API | http://127.0.0.1:5000 |
+| Mailpit | http://localhost:8025 |

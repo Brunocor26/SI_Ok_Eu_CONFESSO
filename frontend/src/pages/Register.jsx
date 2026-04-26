@@ -1,18 +1,39 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Key, Copy, Check, Sparkles, AlertTriangle } from 'lucide-react';
+import { Shield, Key, Copy, Check, Sparkles, AlertTriangle, User } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function Register() {
+  const [username, setUsername] = useState('');
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleGenerate = () => {
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    if (!username.trim()) {
+      setError('O nome de utilizador é obrigatório.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$';
     let pwd = '';
     for (let i = 0; i < 16; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
-    setGeneratedPassword(pwd);
-    setCopied(false);
+    
+    try {
+      await api.auth.register(username, pwd);
+      setGeneratedPassword(pwd);
+      setCopied(false);
+    } catch (err) {
+      setError(err.message || 'Erro ao criar registo.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopy = () => {
@@ -34,19 +55,42 @@ export default function Register() {
 
       <div className="divider" />
 
-      <button className="btn-ghost" onClick={handleGenerate} type="button">
-        <div className="btn-ghost-inner">
-          <Sparkles size={17} />
-          <span>Gerar Acesso e Chaves</span>
-        </div>
-      </button>
+      {!generatedPassword ? (
+        <form onSubmit={handleRegister}>
+          <div className="form-group">
+            <label className="label">Utilizador (Ex: email ou identificador)</label>
+            <div className="input-wrapper">
+              <span className="input-icon"><User size={15} /></span>
+              <input
+                type="text"
+                className="input"
+                value={username}
+                onChange={(e) => { setUsername(e.target.value); setError(''); }}
+                placeholder="Introduza o seu identificador"
+                autoComplete="username"
+              />
+            </div>
+          </div>
 
-      {generatedPassword && (
-        <div className="animate-in" style={{ marginTop: '1.25rem' }}>
+          {error && (
+            <div className="error-banner" style={{marginBottom: "1rem"}}>
+              <AlertTriangle size={14} />
+              {error}
+            </div>
+          )}
+
+          <button className="btn btn-primary btn-block" type="submit" disabled={isLoading} style={{marginBottom: "1rem"}}>
+            <Sparkles size={15} />
+            <span>{isLoading ? "A gerar..." : "Gerar Acesso e Chaves"}</span>
+          </button>
+        </form>
+      ) : (
+        <div className="animate-in" style={{ marginTop: '0.25rem' }}>
           <div className="warning-box">
             <span className="warning-box-icon"><AlertTriangle size={14} /></span>
             <p className="warning-box-text">
-              <strong>Guarda esta password.</strong> Não pode ser recuperada e é necessária para decifrar as tuas mensagens.
+              <strong>Registo efetuado! Guarda esta password.</strong><br/>
+              A mesma será necessária (em conjunto com o teu utilizador "{username}") para entrar no sistema e não pode ser recuperada.
             </p>
           </div>
 
@@ -64,15 +108,19 @@ export default function Register() {
             Chaves Criptográficas
           </label>
           <div className="keys-container">
-            <button type="button" className="btn btn-secondary">
+            <button type="button" className="btn btn-secondary" style={{cursor: "default"}}>
               <Shield size={13} />
               Chave Pública
             </button>
-            <button type="button" className="btn btn-secondary">
+            <button type="button" className="btn btn-secondary" style={{cursor: "default"}}>
               <Key size={13} />
-              Chave Privada
+              Chave Privada (Protegida)
             </button>
           </div>
+          
+          <button type="button" className="btn btn-primary btn-block" style={{marginTop: "1.5rem"}} onClick={() => navigate('/login')}>
+            Ir para Login
+          </button>
         </div>
       )}
 
