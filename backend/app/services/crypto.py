@@ -71,3 +71,58 @@ def compute_hmac(ciphertext_b64: str, key: bytes) -> str:
 def verify_hmac(ciphertext_b64: str, key: bytes, expected_mac_b64: str) -> bool:
     computed = compute_hmac(ciphertext_b64, key)
     return _hmac_stdlib.compare_digest(computed, expected_mac_b64)
+
+
+def hash_password(password: str) -> tuple[str, str]:
+    """Hashes a password for storage using PBKDF2."""
+    salt = generate_salt()
+    key = derive_key(password, salt)
+    return base64.b64encode(key).decode("ascii"), base64.b64encode(salt).decode("ascii")
+
+
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import padding
+
+
+def generate_rsa_key_pair(key_size: int = 2048) -> tuple[str, str]:
+    """Generates an RSA key pair and returns (public_key_pem, private_key_pem)."""
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=key_size,
+    )
+    public_key = private_key.public_key()
+
+    private_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("ascii")
+
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("ascii")
+
+    return public_pem, private_pem
+
+
+def encrypt_private_key(private_pem: str, password: str) -> tuple[str, str, str]:
+    """Encrypts a PEM private key via AES-256-CBC, padded, using a password-derived key.
+    Returns (encrypted_pem_b64, iv_b64, salt_b64)."""
+    salt = generate_salt()
+    key = derive_key(password, salt)
+    iv = secrets.token_bytes(NONCE_SIZE)
+
+    padder = padding.PKCS7(algorithms.AES.block_size).padder()
+    padded_data = padder.update(private_pem.encode("utf-8")) + padder.finalize()
+
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+
+    return (
+        base64.b64encode(ciphertext).decode("ascii"),
+        base64.b64encode(iv).decode("ascii"),
+        base64.b64encode(salt).decode("ascii")
+    )
