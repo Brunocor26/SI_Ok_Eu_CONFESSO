@@ -1,26 +1,45 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  // Função para gerar um "username" determinístico a partir da password
+  // Isto permite que o utilizador não tenha de introduzir um username, 
+  // mantendo a compatibilidade com o backend.
+  const deriveUsername = async (pwd) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(pwd);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (!username.trim()) {
-      setError('Introduza o nome de utilizador.');
-      return;
-    }
     if (password.length !== 16) {
       setError('A password deve ter exatamente 16 caracteres.');
       return;
     }
+    
+    setIsLoading(true);
     setError('');
-    alert('Autenticado com sucesso (Mock)!');
+    
+    try {
+      const username = await deriveUsername(password);
+      await api.auth.login(username, password);
+      navigate('/send'); // Ou para onde quer que a app vá após o login
+    } catch (err) {
+      setError(err.message || 'Credenciais inválidas ou erro no servidor.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -30,35 +49,20 @@ export default function Login() {
           <Lock size={10} />
           Autenticação Segura
         </span>
-        <h1 className="title">Bem-vindo de volta</h1>
-        <p className="subtitle">Introduza as suas credenciais para aceder ao sistema.</p>
+        <h1 className="title">Aceder ao Sistema</h1>
+        <p className="subtitle">Introduza a sua password de 16 caracteres para entrar.</p>
       </div>
 
       <div className="divider" />
 
       <form onSubmit={handleLogin}>
         <div className="form-group">
-          <label className="label">Utilizador</label>
-          <div className="input-wrapper">
-            <span className="input-icon"><User size={15} /></span>
-            <input
-              type="text"
-              className="input"
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setError(''); }}
-              placeholder="nome.apelido"
-              autoComplete="username"
-            />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label className="label">Password (16 caracteres)</label>
+          <label className="label">A tua Password (16 caracteres)</label>
           <div className="input-wrapper">
             <span className="input-icon"><Lock size={15} /></span>
             <input
               type={showPassword ? 'text' : 'password'}
-              className={`input input-with-action ${error && username.trim() ? 'error' : ''}`}
+              className={`input input-with-action ${error ? 'error' : ''}`}
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError(''); }}
               placeholder="••••••••••••••••"
@@ -88,9 +92,9 @@ export default function Login() {
           </div>
         )}
 
-        <button type="submit" className="btn btn-primary btn-block">
+        <button type="submit" className="btn btn-primary btn-block" disabled={isLoading}>
           <LogIn size={15} />
-          Entrar
+          {isLoading ? 'A entrar...' : 'Entrar'}
         </button>
       </form>
 
