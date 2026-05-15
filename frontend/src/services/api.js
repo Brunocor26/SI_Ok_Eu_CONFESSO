@@ -57,6 +57,11 @@ export const api = {
       request("/receipts/verify", {
         method: "POST",
         body: JSON.stringify({ code }),
-      })
+      }),
+    check: (code) =>
+      request("/receipts/check", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      }),
   }
 };
