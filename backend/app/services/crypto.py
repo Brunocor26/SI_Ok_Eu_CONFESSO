@@ -2,9 +2,11 @@ import base64
 import hmac as _hmac_stdlib
 import secrets
 
-from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives import hashes, hmac, serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding as asym_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import padding
 
 PBKDF2_ITERATIONS: int = 600_000
 SALT_SIZE: int = 16
@@ -80,11 +82,6 @@ def hash_password(password: str) -> tuple[str, str]:
     return base64.b64encode(key).decode("ascii"), base64.b64encode(salt).decode("ascii")
 
 
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives import padding
-
-
 def generate_rsa_key_pair(key_size: int = 2048) -> tuple[str, str]:
     """Generates an RSA key pair and returns (public_key_pem, private_key_pem)."""
     private_key = rsa.generate_private_key(
@@ -126,3 +123,49 @@ def encrypt_private_key(private_pem: str, password: str) -> tuple[str, str, str]
         base64.b64encode(iv).decode("ascii"),
         base64.b64encode(salt).decode("ascii")
     )
+
+
+def decrypt_private_key(encrypted_pem_b64: str, password: str, iv_b64: str, salt_b64: str) -> str:
+    """Decrypts a PEM private key via AES-256-CBC, padded, using a password-derived key."""
+    ciphertext = base64.b64decode(encrypted_pem_b64)
+    iv = base64.b64decode(iv_b64)
+    salt = base64.b64decode(salt_b64)
+    key = derive_key(password, salt)
+
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    decryptor = cipher.decryptor()
+    padded_data = decryptor.update(ciphertext) + decryptor.finalize()
+
+    unpadder = padding.PKCS7(algorithms.AES.block_size).unpadder()
+    private_pem = unpadder.update(padded_data) + unpadder.finalize()
+    return private_pem.decode("utf-8")
+
+
+def sign_receipt(receipt_text: str, private_pem: str) -> str:
+    """Signs receipt text using SHA256withRSA and returns base64 signature."""
+    private_key = serialization.load_pem_private_key(
+        private_pem.encode("ascii"),
+        password=None
+    )
+    signature = private_key.sign(
+        receipt_text.encode("utf-8"),
+        asym_padding.PKCS1v15(),
+        hashes.SHA256()
+    )
+    return base64.b64encode(signature).decode("ascii")
+
+
+def verify_receipt_signature(receipt_text: str, signature_b64: str, public_pem: str) -> bool:
+    """Verifies a SHA256withRSA signature."""
+    public_key = serialization.load_pem_public_key(public_pem.encode("ascii"))
+    signature = base64.b64decode(signature_b64)
+    try:
+        public_key.verify(
+            signature,
+            receipt_text.encode("utf-8"),
+            asym_padding.PKCS1v15(),
+            hashes.SHA256()
+        )
+        return True
+    except Exception:
+        return False
