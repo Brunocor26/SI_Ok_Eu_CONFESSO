@@ -13,6 +13,8 @@ const STEP_DENIED = 5;
 export default function DecryptMessage() {
   const [step, setStep] = useState(STEP_CODE);
   const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [encryptedBody, setEncryptedBody] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [decryptedData, setDecryptedData] = useState(null);
@@ -20,8 +22,8 @@ export default function DecryptMessage() {
 
   const handleCodeSubmit = (e) => {
     e.preventDefault();
-    if (!code.trim()) {
-      setError('Introduz o código recebido por email.');
+    if (!code.trim() || !password.trim() || !encryptedBody.trim()) {
+      setError('Preenche todos os campos (código, password e corpo cifrado).');
       return;
     }
     setError('');
@@ -44,7 +46,7 @@ export default function DecryptMessage() {
   const handleConfirmRead = async () => {
     setIsLoading(true);
     try {
-      const data = await api.messages.decrypt(code);
+      const data = await api.messages.decrypt(code, password, encryptedBody);
       setDecryptedData(data);
       setStep(STEP_RESULT);
     } catch (err) {
@@ -60,6 +62,8 @@ export default function DecryptMessage() {
   const handleRetry = () => {
     setStep(STEP_CODE);
     setCode('');
+    setPassword('');
+    setEncryptedBody('');
     setError('');
     setDecryptedData(null);
   };
@@ -106,6 +110,30 @@ export default function DecryptMessage() {
                 spellCheck={false}
               />
             </div>
+          </div>
+          <div className="flex flex-col gap-2 mt-2">
+            <label className="text-[12px] font-medium text-outline uppercase tracking-wider">A tua Password de Acesso</label>
+            <div className="relative flex items-center">
+              <Key size={14} className="absolute left-3 text-outline-variant" />
+              <input
+                type="password"
+                className="w-full bg-surface-container-highest border border-outline-variant rounded p-4 pl-10 font-[JetBrains_Mono,monospace] text-[14px] tracking-[0.05em] text-on-surface focus:border-on-surface focus:ring-0 outline-none transition-colors"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                placeholder="Necessária para aceder à tua chave privada"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-2 mt-2">
+            <label className="text-[12px] font-medium text-outline uppercase tracking-wider">Corpo Cifrado</label>
+            <textarea
+              className="w-full bg-surface-container-highest border border-outline-variant rounded p-4 font-[JetBrains_Mono,monospace] text-[13px] tracking-[0.02em] text-on-surface focus:border-on-surface focus:ring-0 outline-none transition-colors h-32 resize-none"
+              value={encryptedBody}
+              onChange={(e) => { setEncryptedBody(e.target.value); setError(''); }}
+              placeholder="Cola aqui a mensagem cifrada..."
+              spellCheck={false}
+            />
           </div>
           <button
             type="button"

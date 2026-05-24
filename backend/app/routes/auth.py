@@ -9,8 +9,14 @@ def register():
         return jsonify({"error": "Parâmetros em falta"}), 400
         
     try:
-        user = register_user(data["username"], data["password"])
-        return jsonify({"message": "Registo efetuado com sucesso!", "user_id": user.id, "username": user.username}), 201
+        user, public_key, private_key = register_user(data["username"], data["password"])
+        return jsonify({
+            "message": "Registo efetuado com sucesso!",
+            "user_id": user.id,
+            "username": user.username,
+            "public_key": public_key,
+            "private_key": private_key,
+        }), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 

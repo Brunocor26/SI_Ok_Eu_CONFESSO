@@ -2,9 +2,10 @@ from flask import request, jsonify, session
 from app.routes import messages_bp
 from app.models import Message, Receipt, User
 from app.extensions import db
-from app.services.crypto import generate_code, generate_salt, derive_key, encrypt_body, compute_hmac, decrypt_body, verify_hmac, PBKDF2_ITERATIONS
+from app.services.crypto import generate_code, generate_salt, derive_key, encrypt_body, compute_hmac, decrypt_body, verify_hmac, PBKDF2_ITERATIONS, decrypt_private_key, sign_receipt
 from app.services.email import enviar_email_cifrado
 import base64
+from datetime import datetime, timezone
 
 @messages_bp.route("/send", methods=["POST"])
 def send_message():
@@ -68,31 +69,66 @@ def send_message():
 @messages_bp.route("/decrypt", methods=["POST"])
 def decrypt_message():
     data = request.get_json()
-    if not data or not data.get("code"):
-        return jsonify({"error": "Código em falta"}), 400
+    if not data or not data.get("code") or not data.get("password") or not data.get("encrypted_body"):
+        return jsonify({"error": "Parâmetros em falta (código, password, ou corpo cifrado)"}), 400
 
     code = data["code"]
+    provided_password = data["password"]
+    provided_encrypted_body = data["encrypted_body"]
+
     message = db.session.query(Message).filter_by(code=code).first()
     
     if not message:
         return jsonify({"error": "Mensagem não encontrada"}), 404
-        
+
+    # Verify that the provided encrypted body matches the one in DB
+    if message.encrypted_body != provided_encrypted_body:
+        return jsonify({"error": "O corpo cifrado fornecido não corresponde à mensagem original."}), 400
+
+    # --- Validate recipient identity and decrypt private key FIRST ---
+    receipt = db.session.query(Receipt).filter_by(message_id=message.id).first()
+    private_pem = None
+    if receipt and not receipt.confirmed_read:
+        from app.models import UserKey
+        recipient_user = db.session.query(User).filter_by(username=receipt.recipient_email).first()
+        if not recipient_user:
+            return jsonify({"error": "Destinatário não tem conta registada. Por favor, registe-se primeiro."}), 403
+
+        user_key = db.session.query(UserKey).filter_by(user_id=recipient_user.id).first()
+        if not user_key:
+            return jsonify({"error": "Chaves do destinatário não encontradas."}), 404
+
+        try:
+            private_pem = decrypt_private_key(
+                user_key.encrypted_private_key,
+                provided_password,
+                user_key.private_key_iv,
+                user_key.private_key_salt
+            )
+        except Exception:
+            return jsonify({"error": "Falha ao decifrar chave privada. A password está incorreta?"}), 401
+
+    # --- Decrypt the message body ---
     salt = base64.b64decode(message.code_salt)
     key = derive_key(code, salt, iterations=message.pbkdf2_iterations)
-    
+
     if message.hmac:
         is_valid = verify_hmac(message.encrypted_body, key, message.hmac)
         if not is_valid:
             return jsonify({"error": "A integridade da mensagem foi comprometida (HMAC inválido)."}), 400
-            
+
     decrypted_text = decrypt_body(message.encrypted_body, key, message.iv_nonce)
-    
-    # Mark as read
-    receipt = db.session.query(Receipt).filter_by(message_id=message.id).first()
-    if receipt:
+
+    # --- Sign and store the reading receipt ---
+    if receipt and not receipt.confirmed_read and private_pem:
+        receipt_text = f"Recibo de Leitura - Mensagem: {message.id} - Destinatário: {receipt.recipient_email} - Data: {datetime.now(timezone.utc).isoformat()}"
+        signature_b64 = sign_receipt(receipt_text, private_pem)
+
         receipt.confirmed_read = True
+        receipt.receipt_text = receipt_text
+        receipt.signature = signature_b64
         db.session.commit()
-    
+
     return jsonify({
         "subject": message.subject,
         "sender_id": message.sender_id,
