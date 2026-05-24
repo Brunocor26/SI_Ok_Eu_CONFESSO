@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, TriangleAlert, CheckCircle, Copy, Check, ArrowRight } from 'lucide-react';
+import { Lock, TriangleAlert, CheckCircle, Copy, Check, ArrowRight, Download } from 'lucide-react';
 import { api } from '../services/api';
 
 const deriveIdentifier = async (pwd) => {
@@ -13,8 +13,21 @@ const deriveIdentifier = async (pwd) => {
 
 const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$';
 
+const downloadFile = (content, filename) => {
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 export default function Register() {
   const [generatedPassword, setGeneratedPassword] = useState('');
+  const [keys, setKeys] = useState(null); // { publicKey, privateKey }
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,8 +41,9 @@ export default function Register() {
     for (let i = 0; i < 16; i++) pwd += CHARS[Math.floor(Math.random() * CHARS.length)];
     try {
       const identifier = await deriveIdentifier(pwd);
-      await api.auth.register(identifier, pwd);
+      const data = await api.auth.register(identifier, pwd);
       setGeneratedPassword(pwd);
+      setKeys({ publicKey: data.public_key, privateKey: data.private_key });
       setCopied(false);
     } catch (err) {
       setError(err.message || 'Erro ao criar registo.');
@@ -119,20 +133,32 @@ export default function Register() {
               </div>
 
               {/* Key download buttons */}
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  type="button"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded border border-outline-variant bg-transparent text-on-background text-[12px] font-medium hover:bg-surface-container transition-colors"
-                >
-                  Chave Pública
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded border border-outline-variant bg-transparent text-on-background text-[12px] font-medium hover:bg-surface-container transition-colors"
-                >
-                  Chave Privada
-                </button>
-              </div>
+              {keys && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-[11px] text-outline uppercase tracking-wider">Chaves RSA</p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      type="button"
+                      onClick={() => downloadFile(keys.publicKey, 'chave_publica.pem')}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded border border-outline-variant bg-transparent text-on-background text-[12px] font-medium hover:bg-surface-container transition-colors"
+                    >
+                      <Download size={14} />
+                      Chave Pública
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => downloadFile(keys.privateKey, 'chave_privada.pem')}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded border border-outline-variant bg-transparent text-on-background text-[12px] font-medium hover:bg-surface-container transition-colors"
+                    >
+                      <Download size={14} />
+                      Chave Privada
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-outline">
+                    A chave privada só pode ser descarregada agora. Guarda-a num local seguro.
+                  </p>
+                </div>
+              )}
 
               <button
                 type="button"

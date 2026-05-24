@@ -13,10 +13,13 @@ def test_register_creates_user_and_keys(app):
     username = "testuser"
 
     # Act
-    user = register_user(username, password)
+    user, public_pem, private_pem = register_user(username, password)
 
     # Assert - Verificar se o utilizador foi criado
     assert user.id is not None
+    assert public_pem.startswith("-----BEGIN PUBLIC KEY-----")
+    assert private_pem.startswith("-----BEGIN RSA PRIVATE KEY-----") or \
+           private_pem.startswith("-----BEGIN PRIVATE KEY-----")
     
     # Query para garantir persistência na base de dados (SQLite em memória)
     saved_user = db.session.get(User, user.id)

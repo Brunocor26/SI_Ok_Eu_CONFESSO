@@ -7,6 +7,7 @@ export default function VerifyReceipt() {
   const [trackingCode, setTrackingCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null); // null | 'read' | 'pending' | 'error' | 'unavailable'
+  const [receiptData, setReceiptData] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleVerify = async (e) => {
@@ -14,9 +15,11 @@ export default function VerifyReceipt() {
     if (!trackingCode.trim()) return;
     setIsLoading(true);
     setResult(null);
+    setReceiptData(null);
     setErrorMsg('');
     try {
       const data = await api.receipts.check(trackingCode.trim());
+      setReceiptData(data);
       setResult(data.read ? 'read' : 'pending');
     } catch (err) {
       if (err.message?.includes('404') || err.message?.includes('não encontrado') || err.message?.includes('not found')) {
@@ -75,17 +78,32 @@ export default function VerifyReceipt() {
         <div className="bg-surface border border-outline-variant p-[28px] rounded flex flex-col gap-4 relative overflow-hidden">
           <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-l" />
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <CheckCircle size={20} className="text-primary" fill="currentColor" />
-              <span className="text-[14px] text-on-surface">Receção confirmada</span>
-            </div>
+            {receiptData?.confirmed_received && (
+              <div className="flex items-center gap-3">
+                <CheckCircle size={20} className="text-primary" fill="currentColor" />
+                <span className="text-[14px] text-on-surface">Receção confirmada</span>
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <CheckCircle size={20} className="text-primary" fill="currentColor" />
               <span className="text-[14px] text-on-surface">Leitura confirmada</span>
             </div>
           </div>
-          <div className="mt-2 pt-4 border-t border-surface-variant">
-            <p className="font-[JetBrains_Mono,monospace] text-[13px] text-on-surface-variant opacity-70">SHA256withRSA verificada.</p>
+          <div className="mt-2 pt-4 border-t border-surface-variant flex flex-col gap-2">
+            {receiptData?.signature_valid ? (
+              <p className="font-[JetBrains_Mono,monospace] text-[13px] text-on-surface-variant opacity-70">
+                Assinatura SHA256withRSA válida.
+              </p>
+            ) : (
+              <p className="font-[JetBrains_Mono,monospace] text-[13px] text-outline opacity-70">
+                Assinatura não verificável (destinatário sem conta registada).
+              </p>
+            )}
+            {receiptData?.receipt_text && (
+              <p className="font-[JetBrains_Mono,monospace] text-[11px] text-outline break-all">
+                {receiptData.receipt_text}
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -64,5 +64,5 @@ def register_user(username: str, password: str) -> User:
     )
     db.session.add(user_key)
     db.session.commit()
-    
-    return user
+
+    return user, public_pem, private_pem
