@@ -57,7 +57,45 @@ graph TB
 
 ---
 
-## 2. Fluxo Completo de Cifragem / Decifragem
+## 2. Fluxo Principal (Vista Geral)
+
+```mermaid
+sequenceDiagram
+    actor Emissor
+    participant Srv as Sistema
+    actor Destinatário
+
+    Note over Emissor,Srv: Envio
+    Emissor->>Srv: login (password)
+    Srv-->>Emissor: sessão autenticada
+
+    Emissor->>Srv: envia(email, assunto, corpo)
+    activate Srv
+    Note right of Srv: gera código 32-hex<br/>deriva chave PBKDF2<br/>cifra AES-256-CTR<br/>calcula HMAC-SHA256<br/>guarda na BD
+    Srv-->>Emissor: código de rastreio
+    Srv->>Destinatário: email com corpo cifrado + código
+    deactivate Srv
+
+    Note over Destinatário,Srv: Leitura
+    Destinatário->>Srv: acede /decrypt<br/>(código + password + corpo cifrado)
+    activate Srv
+    Destinatário->>Srv: confirma receção ✓
+    Destinatário->>Srv: confirma leitura ✓
+    Note right of Srv: verifica HMAC<br/>decifra AES-256-CTR<br/>assina recibo SHA256withRSA<br/>guarda na BD
+    Srv-->>Destinatário: mensagem em claro
+    deactivate Srv
+
+    Note over Emissor,Srv: Verificação
+    Emissor->>Srv: verifica código
+    activate Srv
+    Note right of Srv: valida assinatura RSA<br/>com chave pública do destinatário
+    Srv-->>Emissor: confirmed_read + signature_valid
+    deactivate Srv
+```
+
+---
+
+## 4. Fluxo Detalhado de Cifragem / Decifragem
 
 ```mermaid
 flowchart TD
@@ -87,7 +125,7 @@ flowchart TD
 
 ---
 
-## 3. Diagrama de Sequência — Cenário 1: Registo e Envio
+## 5. Diagrama de Sequência — Cenário 1: Registo e Envio
 
 ```mermaid
 sequenceDiagram
@@ -128,7 +166,7 @@ sequenceDiagram
 
 ---
 
-## 4. Diagrama de Sequência — Cenário 2: Leitura e Recibo
+## 6. Diagrama de Sequência — Cenário 2: Leitura e Recibo
 
 ```mermaid
 sequenceDiagram
