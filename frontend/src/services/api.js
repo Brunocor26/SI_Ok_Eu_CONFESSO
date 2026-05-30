@@ -46,10 +46,10 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ recipient_email, subject, body }),
       }),
-    decrypt: (code, password, encrypted_body) =>
+    decrypt: (code, password, encrypted_body, private_key) =>
       request("/messages/decrypt", {
         method: "POST",
-        body: JSON.stringify({ code, password, encrypted_body }),
+        body: JSON.stringify({ code, password, encrypted_body, private_key }),
       })
   },
   receipts: {

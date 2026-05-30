@@ -77,18 +77,18 @@ sequenceDiagram
     deactivate Srv
 
     Note over Destinatário,Srv: Leitura
-    Destinatário->>Srv: acede /decrypt<br/>(código + password + corpo cifrado)
+    Destinatário->>Srv: acede /decrypt<br/>(código + password + corpo cifrado + chave privada .pem)
     activate Srv
     Destinatário->>Srv: confirma receção ✓
     Destinatário->>Srv: confirma leitura ✓
-    Note right of Srv: verifica HMAC<br/>decifra AES-256-CTR<br/>assina recibo SHA256withRSA<br/>guarda na BD
+    Note right of Srv: autentica password<br/>valida chave privada vs pública guardada<br/>verifica HMAC<br/>decifra AES-256-CTR<br/>assina recibo SHA256withRSA<br/>guarda na BD
     Srv-->>Destinatário: mensagem em claro
     deactivate Srv
 
     Note over Emissor,Srv: Verificação
     Emissor->>Srv: verifica código
     activate Srv
-    Note right of Srv: valida assinatura RSA<br/>com chave pública do destinatário
+    Note right of Srv: valida assinatura RSA<br/>com chave pública do destinatário (BD)
     Srv-->>Emissor: confirmed_read + signature_valid
     deactivate Srv
 ```
@@ -110,14 +110,17 @@ flowchart TD
     I --> J([Destinatário recebe\no e-mail cifrado])
 
     J --> K[Acede ao site\nvia hiperligação]
-    K --> L[Fornece: corpo cifrado,\ncódigo de acesso,\nchave privada RSA]
-    L --> M{MAC válido?}
-    M -- Não --> N([Erro: mensagem adulterada])
-    M -- Sim --> O[Deriva chave\nPBKDF2 com código + salt]
+    K --> L[Fornece: corpo cifrado,\ncódigo de acesso, password\ne chave privada .pem]
+    L --> Q1{Confirma receção?\nSim / Não}
+    Q1 -- Não --> R([Fluxo termina\nmensagem não é decifrada])
+    Q1 -- Sim --> Q2{Confirma leitura?\nSim / Não}
+    Q2 -- Não --> R
+    Q2 -- Sim --> M[Autentica password\nValida chave privada vs pública guardada]
+    M --> N{MAC válido?}
+    N -- Não --> ERR([Erro: mensagem adulterada])
+    N -- Sim --> O[Deriva chave\nPBKDF2 com código + salt]
     O --> P[Decifra corpo\nAES-256-CTR]
-    P --> Q{Utilizador confirma\nreceção e leitura?\nSim / Não}
-    Q -- Não --> R([Mensagem mostrada\nsem recibo])
-    Q -- Sim --> S[Mostra mensagem\nao destinatário]
+    P --> S[Mostra mensagem\nao destinatário]
     S --> T[Gera recibo assinado\nSHA256withRSA\nchave privada do destinatário]
     T --> U2[Guarda recibo\nna Base de Dados]
     U2 --> V([Emissor pode verificar\no recibo posteriormente])
@@ -138,13 +141,14 @@ sequenceDiagram
     rect rgb(213, 232, 240)
         Note over Emissor,Srv: Registo
         Emissor->>App: Clica em "Registar"
-        App->>Srv: Solicitar novo registo
-        Srv->>Srv: Gerar palavra-passe de 16 caracteres
+        App->>App: Gerar palavra-passe de 16 caracteres (local)
+        App->>App: Derivar identificador interno SHA-256(password)
+        App->>Srv: Pedido de registo (identificador + password)
         Srv->>Srv: Gerar par de chaves RSA
         Srv->>Srv: Cifrar chave privada com AES-256-CBC (derivada da palavra-passe)
-        Srv->>Srv: Guardar hash da palavra-passe e chave pública
-        Srv-->>App: Devolver palavra-passe + par de chaves
-        App-->>Emissor: Mostrar palavra-passe (16 chars) e entregar chaves
+        Srv->>Srv: Guardar hash PBKDF2 da palavra-passe e chave pública
+        Srv-->>App: Devolver chave pública + chave privada (plain)
+        App-->>Emissor: Mostrar palavra-passe gerada + botões de download das chaves
     end
 
     rect rgb(255, 242, 204)
@@ -177,44 +181,43 @@ sequenceDiagram
 
     rect rgb(213, 232, 240)
         Note over Destinatário,Srv: Acesso ao Site
-        Destinatário->>App: Clica na hiperligação no e-mail (https://OK-Eu-CONFESSO.xxx)
+        Destinatário->>App: Clica na hiperligação no e-mail
         App-->>Destinatário: Página de verificação
-        Destinatário->>App: Fornece: (i) corpo cifrado, (ii) código de acesso, (iii) chave privada RSA
-    end
-
-    rect rgb(255, 242, 204)
-        Note over App,Srv: Decifragem
-        App->>Srv: Pedido de decifragem
-        Srv->>Srv: Verificar MAC da mensagem
-        Srv->>Srv: Derivar chave — PBKDF2(código, salt)
-        Srv->>Srv: Decifrar corpo com AES-256-CTR
+        Destinatário->>App: Fornece: (i) código, (ii) password, (iii) corpo cifrado, (iv) chave privada .pem
     end
 
     rect rgb(212, 232, 212)
-        Note over Destinatário,App: Confirmação Explícita
-        Srv-->>App: Mensagem decifrada (ainda oculta)
+        Note over Destinatário,Srv: Confirmação Explícita
         App-->>Destinatário: Diálogo 1: "Acusa a receção?" (Sim / Não)
         Destinatário->>App: Sim
+        App->>Srv: POST /receipts/verify (código)
+        Srv->>Srv: recibo.confirmado_recebido = True
+        Srv-->>App: ok
         App-->>Destinatário: Diálogo 2: "Confirma que vai ler?" (Sim / Não)
         Destinatário->>App: Sim
-        App-->>Destinatário: Apresenta a mensagem decifrada
     end
 
-    rect rgb(248, 206, 204)
-        Note over App,Srv: Geração do Recibo
-        App->>Srv: Gerar recibo de leitura
-        Srv->>Srv: Assinar recibo com SHA256withRSA (chave privada do destinatário)
+    rect rgb(255, 242, 204)
+        Note over App,Srv: Decifragem + Geração do Recibo
+        App->>Srv: POST /messages/decrypt (código + password + corpo cifrado + chave privada)
+        Srv->>Srv: Autenticar password via PBKDF2
+        Srv->>Srv: Validar chave privada vs chave pública guardada na BD
+        Srv->>Srv: Verificar HMAC-SHA256
+        Srv->>Srv: Derivar chave — PBKDF2(código, salt)
+        Srv->>Srv: Decifrar corpo com AES-256-CTR
+        Srv->>Srv: Assinar recibo com SHA256withRSA (chave privada fornecida)
         Srv->>Srv: Guardar recibo assinado na BD
-        Srv-->>App: Recibo gerado
-        App-->>Destinatário: "Recibo de leitura registado"
+        Srv-->>App: assunto + corpo em claro
+        App-->>Destinatário: Apresenta a mensagem decifrada
     end
 
     rect rgb(230, 220, 240)
         Note over Emissor,Srv: Verificação pelo Emissor (opcional)
-        Emissor->>App: Verificar recibo (fornece chave pública do destinatário)
-        App->>Srv: Consultar recibo na BD
+        Emissor->>App: Verificar recibo (código)
+        App->>Srv: POST /receipts/check (código)
+        Srv->>Srv: Consultar recibo + chave pública do destinatário na BD
         Srv->>Srv: Validar assinatura SHA256withRSA
-        Srv-->>App: Resultado da validação
+        Srv-->>App: confirmed_read + signature_valid + receipt_text
         App-->>Emissor: "Recibo válido — mensagem foi lida"
     end
 ```

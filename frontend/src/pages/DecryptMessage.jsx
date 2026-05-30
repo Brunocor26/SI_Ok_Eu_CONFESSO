@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Unlock, Key, CheckCircle, Eye, AlertCircle, ShieldCheck, XCircle, Receipt } from 'lucide-react';
+import { Unlock, Key, CheckCircle, Eye, AlertCircle, ShieldCheck, XCircle, Receipt, FileKey } from 'lucide-react';
 import Layout from '../components/Layout';
 import { api } from '../services/api';
 
@@ -15,15 +15,29 @@ export default function DecryptMessage() {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [encryptedBody, setEncryptedBody] = useState('');
+  const [privateKey, setPrivateKey] = useState('');
+  const [privateKeyFilename, setPrivateKeyFilename] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [decryptedData, setDecryptedData] = useState(null);
+  const fileInputRef = useRef(null);
   const navigate = useNavigate();
+
+  const handlePrivateKeyFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      setPrivateKey(evt.target.result);
+      setPrivateKeyFilename(file.name);
+    };
+    reader.readAsText(file);
+  };
 
   const handleCodeSubmit = (e) => {
     e.preventDefault();
-    if (!code.trim() || !password.trim() || !encryptedBody.trim()) {
-      setError('Preenche todos os campos (código, password e corpo cifrado).');
+    if (!code.trim() || !password.trim() || !encryptedBody.trim() || !privateKey.trim()) {
+      setError('Preenche todos os campos (código, password, chave privada e corpo cifrado).');
       return;
     }
     setError('');
@@ -46,7 +60,7 @@ export default function DecryptMessage() {
   const handleConfirmRead = async () => {
     setIsLoading(true);
     try {
-      const data = await api.messages.decrypt(code, password, encryptedBody);
+      const data = await api.messages.decrypt(code, password, encryptedBody, privateKey);
       setDecryptedData(data);
       setStep(STEP_RESULT);
     } catch (err) {
@@ -64,8 +78,11 @@ export default function DecryptMessage() {
     setCode('');
     setPassword('');
     setEncryptedBody('');
+    setPrivateKey('');
+    setPrivateKeyFilename('');
     setError('');
     setDecryptedData(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
@@ -134,6 +151,30 @@ export default function DecryptMessage() {
               placeholder="Cola aqui a mensagem cifrada..."
               spellCheck={false}
             />
+          </div>
+          <div className="flex flex-col gap-2 mt-2">
+            <label className="text-[12px] font-medium text-outline uppercase tracking-wider">Chave Privada</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pem"
+              className="hidden"
+              onChange={handlePrivateKeyFile}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`w-full flex items-center gap-3 p-4 rounded border transition-colors text-left ${
+                privateKeyFilename
+                  ? 'border-on-surface bg-surface-container text-on-surface'
+                  : 'border-outline-variant bg-surface-container-highest text-outline hover:border-outline'
+              }`}
+            >
+              <FileKey size={16} className={privateKeyFilename ? 'text-primary' : 'text-outline-variant'} />
+              <span className="font-[JetBrains_Mono,monospace] text-[13px] truncate">
+                {privateKeyFilename || 'Selecionar ficheiro chave_privada.pem…'}
+              </span>
+            </button>
           </div>
           <button
             type="button"

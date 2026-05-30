@@ -169,3 +169,13 @@ def verify_receipt_signature(receipt_text: str, signature_b64: str, public_pem: 
         return True
     except Exception:
         return False
+
+
+def validate_private_key_matches_public(private_pem: str, public_pem: str) -> bool:
+    """Returns True if the private key corresponds to the given public key."""
+    private_key = serialization.load_pem_private_key(private_pem.encode("ascii"), password=None)
+    derived_public = private_key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("ascii")
+    return derived_public.strip() == public_pem.strip()

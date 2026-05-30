@@ -2,7 +2,8 @@ from flask import request, jsonify, session
 from app.routes import messages_bp
 from app.models import Message, Receipt, User
 from app.extensions import db
-from app.services.crypto import generate_code, generate_salt, derive_key, encrypt_body, compute_hmac, decrypt_body, verify_hmac, PBKDF2_ITERATIONS, decrypt_private_key, sign_receipt
+from app.services.crypto import generate_code, generate_salt, derive_key, encrypt_body, compute_hmac, decrypt_body, verify_hmac, PBKDF2_ITERATIONS, sign_receipt, validate_private_key_matches_public
+from app.services.auth import verify_login
 from app.services.email import enviar_email_cifrado
 import base64
 from datetime import datetime, timezone
@@ -69,15 +70,16 @@ def send_message():
 @messages_bp.route("/decrypt", methods=["POST"])
 def decrypt_message():
     data = request.get_json()
-    if not data or not data.get("code") or not data.get("password") or not data.get("encrypted_body"):
-        return jsonify({"error": "Parâmetros em falta (código, password, ou corpo cifrado)"}), 400
+    if not data or not data.get("code") or not data.get("password") or not data.get("encrypted_body") or not data.get("private_key"):
+        return jsonify({"error": "Parâmetros em falta (código, password, chave privada, ou corpo cifrado)"}), 400
 
     code = data["code"]
     provided_password = data["password"]
     provided_encrypted_body = data["encrypted_body"]
+    provided_private_key_pem = data["private_key"]
 
     message = db.session.query(Message).filter_by(code=code).first()
-    
+
     if not message:
         return jsonify({"error": "Mensagem não encontrada"}), 404
 
@@ -85,7 +87,7 @@ def decrypt_message():
     if message.encrypted_body != provided_encrypted_body:
         return jsonify({"error": "O corpo cifrado fornecido não corresponde à mensagem original."}), 400
 
-    # --- Validate recipient identity and decrypt private key FIRST ---
+    # --- Validate recipient identity using password + provided private key ---
     receipt = db.session.query(Receipt).filter_by(message_id=message.id).first()
     private_pem = None
     if receipt and not receipt.confirmed_read:
@@ -94,19 +96,22 @@ def decrypt_message():
         if not recipient_user:
             return jsonify({"error": "Destinatário não tem conta registada. Por favor, registe-se primeiro."}), 403
 
+        # Authenticate with password
+        if not verify_login(receipt.recipient_email, provided_password):
+            return jsonify({"error": "Password incorreta."}), 401
+
+        # Validate provided private key against stored public key
         user_key = db.session.query(UserKey).filter_by(user_id=recipient_user.id).first()
         if not user_key:
             return jsonify({"error": "Chaves do destinatário não encontradas."}), 404
 
         try:
-            private_pem = decrypt_private_key(
-                user_key.encrypted_private_key,
-                provided_password,
-                user_key.private_key_iv,
-                user_key.private_key_salt
-            )
+            if not validate_private_key_matches_public(provided_private_key_pem, user_key.public_key):
+                return jsonify({"error": "A chave privada fornecida não corresponde à chave registada."}), 401
         except Exception:
-            return jsonify({"error": "Falha ao decifrar chave privada. A password está incorreta?"}), 401
+            return jsonify({"error": "Chave privada inválida ou em formato incorreto."}), 400
+
+        private_pem = provided_private_key_pem
 
     # --- Decrypt the message body ---
     salt = base64.b64decode(message.code_salt)

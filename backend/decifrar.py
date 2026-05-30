@@ -3,12 +3,6 @@ from cryptography.hazmat.primitives import hashes, serialization, padding as sym
 from cryptography.hazmat.primitives.asymmetric import padding as asym_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-#Este ficheiro contem: 
-# Confirmação Dupla: verificar confirmacao_rececao e confirmacao_leitura antes de avançar cumpre o requisito do Cenário 2. 
-# Algoritmo de Cifra: AES em modo CTR para a decifragem do corpo da mensagem. 
-# Assinatura Digital: A função gerar_recibo_digital utiliza SHA256 com RSA, o que corresponde ao requisito SHA256withRSA mencionado no enunciado. 
-# Verificação: A função de verificação permite ao emissor validar a prova de leitura, fechando o ciclo de Não-Repúdio. 
-
 
 #   Usada no registo: Transforma a chave RSA em bytes, cifra com AES-256-CBC 
 #   e devolve os bytes para serem gravados no ficheiro .pem.
