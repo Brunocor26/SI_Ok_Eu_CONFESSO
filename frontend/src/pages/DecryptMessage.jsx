@@ -299,7 +299,7 @@ export default function DecryptMessage() {
           {/* Success badge */}
           <div className="flex items-center gap-2 bg-[#0d1f0d] border border-[#1a3a1a] text-[#4ade80] px-3 py-2 rounded">
             <ShieldCheck size={14} />
-            <span className="text-[12px] font-medium">Mensagem decifrada e autodestruída do servidor.</span>
+            <span className="text-[12px] font-medium">Mensagem decifrada:</span>
           </div>
 
           {/* Message box */}

@@ -1,6 +1,7 @@
 import base64
 import hmac as _hmac_stdlib
 import secrets
+import json
 
 from cryptography.hazmat.primitives import hashes, hmac, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding as asym_padding
@@ -15,14 +16,24 @@ KEY_SIZE: int = 32
 
 
 def generate_code() -> str:
+    """
+    Apenas a função que gera o código de 16 chars, usamos o secrets, considerado seguro.
+    """
     return secrets.token_hex(16)
 
 
 def generate_salt() -> bytes:
+    """
+    Gera o salt, essencial para evitar ataques de rainbow tables. Sequencia de bytes aleatoria.
+    """
     return secrets.token_bytes(SALT_SIZE)
 
 
 def derive_key(code: str, salt: bytes, iterations: int = PBKDF2_ITERATIONS) -> bytes:
+    """
+    Usa o PBKDF2. recebe uma password (code) e combina com o salt, faz um numero de iterações e devolve uma
+    key segura para encriptação.
+    """
     if not code:
         raise ValueError("code não pode ser vazio")
     if len(salt) != SALT_SIZE:
@@ -37,13 +48,15 @@ def derive_key(code: str, salt: bytes, iterations: int = PBKDF2_ITERATIONS) -> b
     return kdf.derive(code.encode("ascii"))
 
 
-import json
 
 def encrypt_body(plaintext: str, key: bytes) -> tuple[str, str]:
+    """
+    Encripta o corpo da mensagem, ao receber texto e key. Devolve tuplo com
+    """
     if len(key) != KEY_SIZE:
         raise ValueError(f"key deve ter {KEY_SIZE} bytes, recebeu {len(key)}")
 
-    # Wrap in JSON envelope and pad to exactly 4096 bytes to prevent traffic size analysis
+    # Importante! padding para tamanho 4096 para evitar analise ao olhar.
     envelope = json.dumps({"body": plaintext})
     envelope_bytes = envelope.encode("utf-8")
     
@@ -51,20 +64,27 @@ def encrypt_body(plaintext: str, key: bytes) -> tuple[str, str]:
     if len(envelope_bytes) > FIXED_SIZE:
         raise ValueError(f"Mensagem demasiado longa (máximo permitido é cerca de {FIXED_SIZE - 20} caracteres)")
         
+    #padding de nulls até chegar ao tamanho maximo
     padded_data = envelope_bytes + b"\x00" * (FIXED_SIZE - len(envelope_bytes))
 
+    #garantir que é unico
     nonce = secrets.token_bytes(NONCE_SIZE)
+    #cifra com o AES ! importante: tem de ser simetrico para poder reverter e mostrar msg!!
     cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
     encryptor = cipher.encryptor()
+    #adiciona o padding e manda
     ciphertext = encryptor.update(padded_data) + encryptor.finalize()
 
-    return (
+    return ( #manda texto cifrado e nonce
         base64.b64encode(ciphertext).decode("ascii"),
         base64.b64encode(nonce).decode("ascii"),
     )
 
 
 def decrypt_body(ciphertext_b64: str, key: bytes, nonce_b64: str) -> str:
+    """
+    Desencriptar, ao receber o ciphertext, a key e o nonce.
+    """
     if len(key) != KEY_SIZE:
         raise ValueError(f"key deve ter {KEY_SIZE} bytes, recebeu {len(key)}")
 
