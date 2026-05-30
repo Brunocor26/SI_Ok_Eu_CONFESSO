@@ -165,7 +165,7 @@ def check_receipt():
             user_key = db.session.query(UserKey).filter_by(user_id=receipt.recipient_user_id).first()
             if user_key:
                 try:
-                    signature_valid = verify_receipt_signature(
+                    signature_valid = verificar_recibo_leitura(
                         receipt.receipt_text, receipt.signature, user_key.public_key
                     )
                 except Exception:

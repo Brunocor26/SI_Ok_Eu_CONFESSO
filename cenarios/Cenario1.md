@@ -5,11 +5,10 @@ USER                                                    SISTEMA
                                                         
 registo() ------------------------------------------>
                                                         pass = gerarPassword(tam=16)
-                                                        id   = SHA256(pass)    ==deriva o id da password==
+                                                        id   = SHA256(pass)    ==lookup key, deriva da password==
                                                         hash = PBKDF2(pass, salt_pw)  -> guarda (id, hash, salt_pw)
                                                         (pub, priv) = gerarParRSA(bits=2048)
-                                                        priv_cif = AES-256-CBC(priv, PBKDF2(pass, salt_rsa))
-                                                        guarda (pub, priv_cif, salt_rsa, iv_rsa)
+                                                        guarda apenas pub  ==priv NUNCA é guardada no servidor==
 
 pass, pub, priv  <-----------------------------------------  pass, pub, priv
 
@@ -22,14 +21,16 @@ Nota: o backend NUNCA GUARDA A PASSWORD! 2 entidades a saberem a password nao po
 [frontend: pages/Login.jsx | backend: routes/auth.py, services/auth.py]
                                                         
 login(pass) ----------------------------------------->
-                                                        id = SHA256(pass)
-                                                        hash' = PBKDF2(pass, salt_pw guardado)
+                                                        id     = SHA256(pass)       ==lookup: encontrar o registo==
+                                                        hash'  = PBKDF2(pass, salt_pw guardado)
                                                         verificar hash' == hash  -> cria sessão
 
 autenticado  <---------------------------------------------  ok
 
 
-Nota: como o servidor nao sabe a password, apenas a hash, o que ele faz é, faz o hash do que recebeu e comparar a hash que tem guardada com a hash do que veio
+Nota: SHA256(pass) serve apenas para ENCONTRAR o utilizador na BD (é rápido, usado como índice).
+      PBKDF2(pass, salt) serve para VERIFICAR a password (é lento por design, 600k iterações).
+      O servidor nunca guarda a password em claro.
 
 ----------------------- ENVIO DE MENSAGEM -----------------------
 [frontend: pages/SendMessage.jsx | backend: routes/messages.py, services/crypto.py, services/email.py]
