@@ -8,8 +8,6 @@ const request = async (endpoint, options = {}) => {
       ...options.headers,
     },
     // Allows sending and receiving cookies (for Flask session)
-    // Note: If running on different ports without proxy, CORS needs to be handled on Backend.
-    // For local dev, Vite proxy is recommended.
   };
 
   const response = await fetch(`${API_URL}${endpoint}`, config);
@@ -24,32 +22,31 @@ const request = async (endpoint, options = {}) => {
 
 export const api = {
   auth: {
-    register: (username, password) => 
+    register: () =>
       request("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ username, password }),
       }),
-    login: (username, password) =>
+    login: (user_id, password) =>
       request("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ user_id, password }),
       }),
-    logout: () =>
+    logout: () =>       //?????
       request("/auth/logout", {
         method: "POST",
       }),
     me: () => request("/auth/me"),
   },
   messages: {
-    send: (recipient_email, subject, body) =>
+    send: (recipient_email, subject, body, notification_email) =>
       request("/messages/send", {
         method: "POST",
-        body: JSON.stringify({ recipient_email, subject, body }),
+        body: JSON.stringify({ recipient_email, subject, body, notification_email: notification_email || null }),
       }),
-    decrypt: (code, password, encrypted_body, private_key) =>
+    decrypt: (code, password, encrypted_body) =>
       request("/messages/decrypt", {
         method: "POST",
-        body: JSON.stringify({ code, password, encrypted_body, private_key }),
+        body: JSON.stringify({ code, password, encrypted_body }),
       })
   },
   receipts: {
@@ -62,6 +59,11 @@ export const api = {
       request("/receipts/check", {
         method: "POST",
         body: JSON.stringify({ code }),
+      }),
+    confirmRead: (code, signature) =>
+      request("/receipts/confirm-read", {
+        method: "POST",
+        body: JSON.stringify({ code, signature }),
       }),
   }
 };

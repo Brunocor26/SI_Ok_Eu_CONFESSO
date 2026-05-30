@@ -4,11 +4,11 @@ from app.services.crypto import hash_password, derive_key, PBKDF2_ITERATIONS, ge
 import base64
 import hmac
 
-def verify_login(username: str, password: str) -> User | None:
+def verify_login(user_id: str, password: str) -> User | None:
     """
     Verifica as credenciais de um utilizador.
     """
-    user = db.session.query(User).filter_by(username=username).first()
+    user = db.session.query(User).filter_by(user_id=user_id).first()
     if not user:
         return None
         
@@ -20,28 +20,27 @@ def verify_login(username: str, password: str) -> User | None:
         return user
     return None
 
-def register_user(username: str, password: str) -> User:
+def register_user(user_id: str, password: str) -> User:
     """
-    Registers a new user given a username and password.
+    Registers a new user given a user_id and password.
     1. Hashes the password and saves the User.
     2. Generates an RSA key pair.
     3. Encrypts the private key with the user's password.
     4. Saves the UserKey.
     """
-    if not username or not username.strip():
+    if not user_id or not user_id.strip():
         raise ValueError("O nome de utilizador não pode ser vazio.")
     if not password or len(password) < 16:
         raise ValueError("A password deve ter pelo menos 16 caracteres.")
         
     # Verificar se utilizador já existe
-    if db.session.query(User).filter_by(username=username).first():
+    if db.session.query(User).filter_by(user_id=user_id).first():
         raise ValueError("Nome de utilizador já em uso.")
-
     # 1. Hashing do password do utilizador
     password_hash, password_salt = hash_password(password)
-    
+
     user = User(
-        username=username,
+        user_id=user_id,
         password_hash=password_hash,
         password_salt=password_salt
     )

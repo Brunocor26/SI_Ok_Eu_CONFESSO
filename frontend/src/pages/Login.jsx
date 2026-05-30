@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 
-const deriveUsername = async (pwd) => {
+const deriveUserId = async (pwd) => {
   const encoder = new TextEncoder();
   const data = encoder.encode(pwd);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -27,8 +27,8 @@ export default function Login() {
     setIsLoading(true);
     setError('');
     try {
-      const username = await deriveUsername(password);
-      await api.auth.login(username, password);
+      const user_id = await deriveUserId(password);
+      await api.auth.login(user_id, password);
       navigate('/send');
     } catch (err) {
       setError(err.message || 'Credenciais inválidas ou erro no servidor.');
@@ -114,7 +114,7 @@ export default function Login() {
             Criar acesso
           </button>
         </p>
-        <p className="text-[12px] text-on-surface-variant opacity-60">© 2024 OK, Eu Confesso — Encriptação Ponta-a-Ponta</p>
+        <p className="text-[12px] text-on-surface-variant opacity-60">© 2026 OK, Eu Confesso — Encriptação Ponta-a-Ponta</p>
         <div className="flex gap-4 text-[13px]">
           <span className="text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer">Privacidade</span>
           <span className="text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer">Termos</span>

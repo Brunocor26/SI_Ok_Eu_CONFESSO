@@ -8,6 +8,7 @@ export default function SendMessage() {
   const [recipientEmail, setRecipientEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [notificationEmail, setNotificationEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [sentCode, setSentCode] = useState(null);
@@ -23,7 +24,7 @@ export default function SendMessage() {
     setIsLoading(true);
     setError('');
     try {
-      const data = await api.messages.send(recipientEmail, subject, body);
+      const data = await api.messages.send(recipientEmail, subject, body, notificationEmail || null);
       setSentCode(data.code);
     } catch (err) {
       setError(err.message || 'Erro ao enviar a mensagem.');
@@ -48,6 +49,7 @@ export default function SendMessage() {
     setRecipientEmail('');
     setSubject('');
     setBody('');
+    setNotificationEmail('');
     setCopied(false);
   };
 
@@ -152,6 +154,23 @@ export default function SendMessage() {
             placeholder="Escreve a tua mensagem..."
             rows={5}
           />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-[12px] font-medium text-on-surface-variant">
+            Notificar-me quando lido <span className="text-outline-variant font-normal">(opcional)</span>
+          </label>
+          <div className="relative flex items-center">
+            <Mail size={14} className="absolute left-3 text-outline-variant" />
+            <input
+              type="email"
+              className="w-full bg-surface border border-outline-variant rounded py-2.5 pl-10 pr-3 text-[14px] text-on-surface focus:border-on-surface focus:outline-none transition-colors"
+              value={notificationEmail}
+              onChange={(e) => setNotificationEmail(e.target.value)}
+              placeholder="o-teu-email@exemplo.com"
+              autoComplete="off"
+            />
+          </div>
         </div>
 
         <button

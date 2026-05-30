@@ -1,38 +1,38 @@
 from flask import request, jsonify, session
 from app.routes import auth_bp
 from app.services.auth import register_user, verify_login
+import secrets
+import hashlib
+
+_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$'
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-    data = request.get_json()
-    if not data or "username" not in data or "password" not in data:
-        return jsonify({"error": "Parâmetros em falta"}), 400
-        
+    password = ''.join(secrets.choice(_CHARS) for _ in range(16))
+    identifier = hashlib.sha256(password.encode('utf-8')).hexdigest()
+
     try:
-        user, public_key, private_key = register_user(data["username"], data["password"])
+        user, public_key, private_key = register_user(identifier, password)
+        #MANDA para o user (password, public_key, private_key)n
         return jsonify({
             "message": "Registo efetuado com sucesso!",
-            "user_id": user.id,
-            "username": user.username,
+            "password": password,
             "public_key": public_key,
             "private_key": private_key,
         }), 201
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
 
-@auth_bp.route("/login", methods=["POST"])
+@auth_bp.route("/login", methods=["POST"])  #TODO: pq???
 def login():
     data = request.get_json()
-    if not data or "username" not in data or "password" not in data:
+    if not data or "user_id" not in data or "password" not in data:
         return jsonify({"error": "Parâmetros em falta"}), 400
-        
-    user = verify_login(data["username"], data["password"])
+
+    user = verify_login(data["user_id"], data["password"])
     if user:
         session["user_id"] = user.id
-        # Idealmente, o frontend só envia a password para o backend criar sessão 
-        # Cuidado que na perspetiva de Zero-Knowledge The frontend precisará desta password 
-        # para decifrar a private key mais tarde.
-        return jsonify({"message": "Login com sucesso!", "username": user.username})
+        return jsonify({"message": "Login com sucesso!", "user_id": user.user_id})
     return jsonify({"error": "Credenciais inválidas"}), 401
 
 @auth_bp.route("/logout", methods=["POST"])
@@ -47,5 +47,5 @@ def me():
         from app.extensions import db
         user = db.session.get(User, session["user_id"])
         if user:
-            return jsonify({"username": user.username, "id": user.id})
+            return jsonify({"user_id": user.user_id, "id": user.id})
     return jsonify({"error": "Não autenticado"}), 401

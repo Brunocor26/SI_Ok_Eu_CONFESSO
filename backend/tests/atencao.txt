@@ -1,3 +1,0 @@
-Todos os testes devem ter o formato test_X.py
-
-Sendo que X faz referência ao que o teste verifica.

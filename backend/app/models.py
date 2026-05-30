@@ -9,7 +9,7 @@ class User(db.Model):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     password_salt: Mapped[str] = mapped_column(Text, nullable=False)
     hash_algorithm: Mapped[str] = mapped_column(String, default="pbkdf2_sha256", server_default="pbkdf2_sha256", nullable=False)
@@ -42,6 +42,7 @@ class Message(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     sender_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     recipient_email: Mapped[str] = mapped_column(Text, nullable=False)
+    sender_notification_email: Mapped[str] = mapped_column(String(255), nullable=True)
     subject: Mapped[str] = mapped_column(Text, nullable=False)
     encrypted_body: Mapped[str] = mapped_column(Text, nullable=False)
     code: Mapped[str] = mapped_column(Text, nullable=False, index=True)

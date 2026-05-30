@@ -57,7 +57,7 @@ export default function VerifyReceipt() {
             className="bg-surface-container-highest border border-outline-variant rounded p-4 font-[JetBrains_Mono,monospace] text-[14px] tracking-[0.05em] text-on-surface focus:border-on-surface focus:ring-0 outline-none transition-colors w-full"
             value={trackingCode}
             onChange={(e) => { setTrackingCode(e.target.value); setResult(null); }}
-            placeholder="RC-XXXX-XXXX-XXXX-XXXX"
+            placeholder=""
             autoComplete="off"
             spellCheck={false}
           />

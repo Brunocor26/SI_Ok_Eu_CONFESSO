@@ -50,7 +50,7 @@ export default function Layout({ children, activeTab }) {
           <span className="text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer">Termos</span>
           <span className="text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer">Segurança</span>
         </div>
-        <div className="text-[12px] text-on-surface-variant opacity-60">© 2024 OK, Eu Confesso — Encriptação Ponta-a-Ponta</div>
+        <div className="text-[12px] text-on-surface-variant opacity-60">© 2026 OK, Eu Confesso — Encriptação Ponta-a-Ponta</div>
       </footer>
 
       {/* BottomNavBar (mobile) */}

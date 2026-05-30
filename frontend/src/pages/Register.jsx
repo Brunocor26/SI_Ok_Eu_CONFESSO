@@ -3,16 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Lock, TriangleAlert, CheckCircle, Copy, Check, ArrowRight, Download } from 'lucide-react';
 import { api } from '../services/api';
 
-const deriveIdentifier = async (pwd) => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pwd);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
-
-const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$';
-
 const downloadFile = (content, filename) => {
   const blob = new Blob([content], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
@@ -37,12 +27,9 @@ export default function Register() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    let pwd = '';
-    for (let i = 0; i < 16; i++) pwd += CHARS[Math.floor(Math.random() * CHARS.length)];
     try {
-      const identifier = await deriveIdentifier(pwd);
-      const data = await api.auth.register(identifier, pwd);
-      setGeneratedPassword(pwd);
+      const data = await api.auth.register();
+      setGeneratedPassword(data.password);
       setKeys({ publicKey: data.public_key, privateKey: data.private_key });
       setCopied(false);
     } catch (err) {

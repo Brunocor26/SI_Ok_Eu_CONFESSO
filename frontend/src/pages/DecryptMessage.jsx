@@ -10,6 +10,27 @@ const STEP_CONFIRM_READ = 3;
 const STEP_RESULT = 4;
 const STEP_DENIED = 5;
 
+async function signReceiptText(receiptText, privatePem) {
+  const pemContents = privatePem
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\s/g, '');
+  const binaryDer = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer.buffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    key,
+    new TextEncoder().encode(receiptText)
+  );
+  return btoa(String.fromCharCode(...new Uint8Array(signature)));
+}
+
 export default function DecryptMessage() {
   const [step, setStep] = useState(STEP_CODE);
   const [code, setCode] = useState('');
@@ -37,7 +58,7 @@ export default function DecryptMessage() {
   const handleCodeSubmit = (e) => {
     e.preventDefault();
     if (!code.trim() || !password.trim() || !encryptedBody.trim() || !privateKey.trim()) {
-      setError('Preenche todos os campos (código, password, chave privada e corpo cifrado).');
+      setError('Preenche todos os campos obrigatórios.');
       return;
     }
     setError('');
@@ -60,8 +81,18 @@ export default function DecryptMessage() {
   const handleConfirmRead = async () => {
     setIsLoading(true);
     try {
-      const data = await api.messages.decrypt(code, password, encryptedBody, privateKey);
+      const data = await api.messages.decrypt(code, password, encryptedBody);
       setDecryptedData(data);
+
+      if (data.receipt_text && privateKey.trim()) {
+        try {
+          const signature = await signReceiptText(data.receipt_text, privateKey);
+          await api.receipts.confirmRead(code, signature);
+        } catch {
+          // Assinatura falhou mas a mensagem já foi decifrada — não bloquear o utilizador
+        }
+      }
+
       setStep(STEP_RESULT);
     } catch (err) {
       setError(err.message || 'Código inválido ou mensagem não encontrada.');
@@ -137,7 +168,7 @@ export default function DecryptMessage() {
                 className="w-full bg-surface-container-highest border border-outline-variant rounded p-4 pl-10 font-[JetBrains_Mono,monospace] text-[14px] tracking-[0.05em] text-on-surface focus:border-on-surface focus:ring-0 outline-none transition-colors"
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                placeholder="Necessária para aceder à tua chave privada"
+                placeholder="A tua password de acesso"
                 autoComplete="off"
               />
             </div>
@@ -175,6 +206,16 @@ export default function DecryptMessage() {
                 {privateKeyFilename || 'Selecionar ficheiro chave_privada.pem…'}
               </span>
             </button>
+            <p className="text-[12px] text-outline-variant mt-1">
+              Não tens chave privada?{' '}
+              <button
+                type="button"
+                className="underline text-outline hover:text-on-surface transition-colors"
+                onClick={() => navigate('/register')}
+              >
+                Regista-te primeiro
+              </button>
+            </p>
           </div>
           <button
             type="button"
