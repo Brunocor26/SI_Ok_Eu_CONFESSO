@@ -26,14 +26,11 @@ class UserKey(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     public_key: Mapped[str] = mapped_column(Text, nullable=False)
-    encrypted_private_key: Mapped[str] = mapped_column(Text, nullable=True)
-    private_key_iv: Mapped[str] = mapped_column(Text, nullable=True)
-    private_key_salt: Mapped[str] = mapped_column(Text, nullable=True)
-    key_cipher_algo: Mapped[str] = mapped_column(String, default="AES-256-CBC", server_default="AES-256-CBC", nullable=False)
     rsa_key_size: Mapped[int] = mapped_column(Integer, default=2048, server_default="2048", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), server_default=db.func.now(), nullable=False)
 
     user = relationship("User", back_populates="user_keys")
+
 
 
 class Message(db.Model):

@@ -16,4 +16,5 @@ __pycache__/
 # Environment variables
 .env
 
-apresentacao
+apresentacao/
+instance/

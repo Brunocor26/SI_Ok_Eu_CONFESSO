@@ -37,14 +37,26 @@ def derive_key(code: str, salt: bytes, iterations: int = PBKDF2_ITERATIONS) -> b
     return kdf.derive(code.encode("ascii"))
 
 
+import json
+
 def encrypt_body(plaintext: str, key: bytes) -> tuple[str, str]:
     if len(key) != KEY_SIZE:
         raise ValueError(f"key deve ter {KEY_SIZE} bytes, recebeu {len(key)}")
 
+    # Wrap in JSON envelope and pad to exactly 4096 bytes to prevent traffic size analysis
+    envelope = json.dumps({"body": plaintext})
+    envelope_bytes = envelope.encode("utf-8")
+    
+    FIXED_SIZE = 4096
+    if len(envelope_bytes) > FIXED_SIZE:
+        raise ValueError(f"Mensagem demasiado longa (máximo permitido é cerca de {FIXED_SIZE - 20} caracteres)")
+        
+    padded_data = envelope_bytes + b"\x00" * (FIXED_SIZE - len(envelope_bytes))
+
     nonce = secrets.token_bytes(NONCE_SIZE)
     cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
     encryptor = cipher.encryptor()
-    ciphertext = encryptor.update(plaintext.encode("utf-8")) + encryptor.finalize()
+    ciphertext = encryptor.update(padded_data) + encryptor.finalize()
 
     return (
         base64.b64encode(ciphertext).decode("ascii"),
@@ -61,7 +73,12 @@ def decrypt_body(ciphertext_b64: str, key: bytes, nonce_b64: str) -> str:
 
     cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
     decryptor = cipher.decryptor()
-    return (decryptor.update(ciphertext) + decryptor.finalize()).decode("utf-8")
+    padded_data = decryptor.update(ciphertext) + decryptor.finalize()
+
+    # Remove trailing null bytes and parse JSON envelope
+    envelope_bytes = padded_data.rstrip(b"\x00")
+    envelope = json.loads(envelope_bytes.decode("utf-8"))
+    return envelope["body"]
 
 
 def compute_hmac(ciphertext_b64: str, key: bytes) -> str:

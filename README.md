@@ -70,8 +70,6 @@ SI_Ok_Eu_CONFESSO/
 ├── ServicoEmail/
 │   └── docker-compose.yml        # Mailpit: servidor SMTP (:1025) e interface web (:8025)
 │
-├── SchemasBD/
-│   └── schema.sql                # Esquema SQL das 4 tabelas (referência)
 │
 ├── ProvasDeConceito/             # Scripts Python autónomos para validar primitivas
 │   ├── AES-256-CBC.py

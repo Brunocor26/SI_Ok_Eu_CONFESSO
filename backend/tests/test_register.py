@@ -30,10 +30,6 @@ def test_register_creates_user_and_keys(app):
     user_key = db.session.query(UserKey).filter_by(user_id=saved_user.id).first()
     assert user_key is not None
     assert user_key.public_key.startswith("-----BEGIN PUBLIC KEY-----")
-    assert len(user_key.encrypted_private_key) > 1000  # O tamanho aproxima-se de 2KB
-    assert user_key.private_key_iv is not None
-    assert user_key.private_key_salt is not None
     
     # Conferir integridade de parâmetros RSA originais
     assert user_key.rsa_key_size == 2048
-    assert user_key.key_cipher_algo == "AES-256-CBC"
