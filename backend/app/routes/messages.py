@@ -175,7 +175,6 @@ def decrypt_message():
 
     return jsonify({
         "subject": message.subject,
-        "sender_id": message.sender_id,
         "body": decrypted_text,
         "receipt_text": receipt.receipt_text
     })

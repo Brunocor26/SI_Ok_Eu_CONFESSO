@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Send, Mail, Lock, Check, Copy, ArrowRight, Plus, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, Check, Copy, ArrowRight, Plus, AlertCircle } from 'lucide-react';
 import Layout from '../components/Layout';
 import { api } from '../services/api';
 

@@ -50,10 +50,5 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ code }),
       }),
-    confirmRead: (code, signature) =>
-      request("/receipts/confirm-read", {
-        method: "POST",
-        body: JSON.stringify({ code, signature }),
-      }),
   }
 };
