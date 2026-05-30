@@ -115,34 +115,32 @@ def test_fluxo_completo(client, fluxo):
     r = client.post("/api/receipts/verify", json={"code": code})
     assert r.status_code == 200, r.get_json()
 
-    # 2. Decifrar mensagem
-    r = client.post("/api/messages/decrypt", json={
-        "code":           code,
-        "password":       DESTINATARIO_PWD,
-        "encrypted_body": encrypted_body,
-    })
-    assert r.status_code == 200, r.get_json()
-    data = r.get_json()
-    assert data["body"] == PLAINTEXT
-    assert data["subject"] == "Mensagem secreta"
-    receipt_text = data["receipt_text"]
-    assert receipt_text is not None
-
-    # 3. Assinar receipt_text localmente (simula Web Crypto API do browser)
-    signature = sign_receipt(receipt_text, private_key)
-
-    # 4. Confirmar leitura com assinatura — mock do email para verificar chamada
-    with patch("app.routes.receipts.enviar_notificacao_leitura") as mock_email:
-        r = client.post("/api/receipts/confirm-read", json={
-            "code":      code,
-            "signature": signature,
+    # 2. Decifrar mensagem (envia a chave privada para o backend assinar)
+    with patch("app.routes.messages.enviar_notificacao_leitura") as mock_email:
+        r = client.post("/api/messages/decrypt", json={
+            "code":           code,
+            "password":       DESTINATARIO_PWD,
+            "encrypted_body": encrypted_body,
+            "private_key":    private_key,
         })
         assert r.status_code == 200, r.get_json()
+        data = r.get_json()
+        assert data["body"] == PLAINTEXT
+        assert data["subject"] == "Mensagem secreta"
+        receipt_text = data["receipt_text"]
+        assert receipt_text is not None
 
         # Verifica que o email de notificação foi enviado ao emissor
         mock_email.assert_called_once_with(NOTIFICATION_EMAIL, receipt_text)
 
-    # 5. Verificar recibo — assinatura deve ser válida
+    # 3. Chamar confirm-read para compatibilidade (deve responder OK de imediato já confirmado)
+    r = client.post("/api/receipts/confirm-read", json={
+        "code":      code,
+        "signature": "qualquer_assinatura_de_compatibilidade",
+    })
+    assert r.status_code == 200, r.get_json()
+
+    # 4. Verificar recibo — assinatura deve ser válida
     r = client.post("/api/receipts/check", json={"code": code})
     assert r.status_code == 200, r.get_json()
     check = r.get_json()

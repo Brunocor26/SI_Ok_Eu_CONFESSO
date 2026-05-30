@@ -81,7 +81,7 @@ def setup(app):
 
 def post_decrypt(client, code, password, encrypted_body, private_key):
     return client.post(
-        "/messages/decrypt",
+        "/api/messages/decrypt",
         json={
             "code":           code,
             "password":       password,
@@ -149,7 +149,7 @@ def test_decrypt_missing_field_returns_400(client, setup, missing_field):
         "private_key":    setup["private_key"],
     }
     del payload[missing_field]
-    r = client.post("/messages/decrypt", json=payload)
+    r = client.post("/api/messages/decrypt", json=payload)
     assert r.status_code == 400
 
 
@@ -268,3 +268,22 @@ def test_decrypt_unregistered_recipient_returns_403(client, app):
 
     r = post_decrypt(client, saved_code, PASSWORD, saved_ct, saved_priv)
     assert r.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Verificação de HMAC inválido / adulterado fornecido pelo destinatário
+# ---------------------------------------------------------------------------
+
+def test_decrypt_tampered_hmac_provided_returns_400(client, setup):
+    """HMAC fornecido no payload diferente do calculado/guardado na BD → rejeição."""
+    r = client.post(
+        "/api/messages/decrypt",
+        json={
+            "code":           setup["code"],
+            "password":       PASSWORD,
+            "encrypted_body": setup["encrypted_body"],
+            "private_key":    setup["private_key"],
+            "hmac":           "isto_nao_e_um_hmac_valido_1234567890",
+        },
+    )
+    assert r.status_code == 400

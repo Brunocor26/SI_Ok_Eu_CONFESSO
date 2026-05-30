@@ -104,8 +104,8 @@ def generate_rsa_key_pair(key_size: int = 2048) -> tuple[str, str]:
     return public_pem, private_pem
 
 
-def encrypt_private_key(private_pem: str, password: str) -> tuple[str, str, str]:
-    """Encrypts a PEM private key via AES-256-CBC, padded, using a password-derived key.
+def encrypt_private_key(private_pem: str, password: str, key_cipher_algo: str = "AES-256-CBC") -> tuple[str, str, str]:
+    """Encrypts a PEM private key via AES-256-CBC or AES-256-CTR, padded, using a password-derived key.
     Returns (encrypted_pem_b64, iv_b64, salt_b64)."""
     salt = generate_salt()
     key = derive_key(password, salt)
@@ -114,7 +114,11 @@ def encrypt_private_key(private_pem: str, password: str) -> tuple[str, str, str]
     padder = padding.PKCS7(algorithms.AES.block_size).padder()
     padded_data = padder.update(private_pem.encode("utf-8")) + padder.finalize()
 
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    if key_cipher_algo == "AES-256-CTR":
+        cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
+    else:
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+
     encryptor = cipher.encryptor()
     ciphertext = encryptor.update(padded_data) + encryptor.finalize()
 
@@ -125,14 +129,18 @@ def encrypt_private_key(private_pem: str, password: str) -> tuple[str, str, str]
     )
 
 
-def decrypt_private_key(encrypted_pem_b64: str, password: str, iv_b64: str, salt_b64: str) -> str:
-    """Decrypts a PEM private key via AES-256-CBC, padded, using a password-derived key."""
+def decrypt_private_key(encrypted_pem_b64: str, password: str, iv_b64: str, salt_b64: str, key_cipher_algo: str = "AES-256-CBC") -> str:
+    """Decrypts a PEM private key via AES-256-CBC or AES-256-CTR, padded, using a password-derived key."""
     ciphertext = base64.b64decode(encrypted_pem_b64)
     iv = base64.b64decode(iv_b64)
     salt = base64.b64decode(salt_b64)
     key = derive_key(password, salt)
 
-    cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+    if key_cipher_algo == "AES-256-CTR":
+        cipher = Cipher(algorithms.AES(key), modes.CTR(iv))
+    else:
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
+
     decryptor = cipher.decryptor()
     padded_data = decryptor.update(ciphertext) + decryptor.finalize()
 
@@ -141,30 +149,43 @@ def decrypt_private_key(encrypted_pem_b64: str, password: str, iv_b64: str, salt
     return private_pem.decode("utf-8")
 
 
-def sign_receipt(receipt_text: str, private_pem: str) -> str:
-    """Signs receipt text using SHA256withRSA and returns base64 signature."""
+def sign_receipt(receipt_text: str, private_pem: str, hash_algo: str = "SHA-256") -> str:
+    """Signs receipt text using SHA256/384/512withRSA and returns base64 signature."""
     private_key = serialization.load_pem_private_key(
         private_pem.encode("ascii"),
         password=None
     )
+    if hash_algo in ("SHA-384", "SHA384", "SHA384withRSA"):
+        chosen_hash = hashes.SHA384()
+    elif hash_algo in ("SHA-512", "SHA512", "SHA512withRSA"):
+        chosen_hash = hashes.SHA512()
+    else:
+        chosen_hash = hashes.SHA256()
+
     signature = private_key.sign(
         receipt_text.encode("utf-8"),
         asym_padding.PKCS1v15(),
-        hashes.SHA256()
+        chosen_hash
     )
     return base64.b64encode(signature).decode("ascii")
 
 
-def verify_receipt_signature(receipt_text: str, signature_b64: str, public_pem: str) -> bool:
-    """Verifies a SHA256withRSA signature."""
+def verify_receipt_signature(receipt_text: str, signature_b64: str, public_pem: str, hash_algo: str = "SHA-256") -> bool:
+    """Verifies a SHA256/384/512withRSA signature."""
     public_key = serialization.load_pem_public_key(public_pem.encode("ascii"))
     signature = base64.b64decode(signature_b64)
+    if hash_algo in ("SHA-384", "SHA384", "SHA384withRSA"):
+        chosen_hash = hashes.SHA384()
+    elif hash_algo in ("SHA-512", "SHA512", "SHA512withRSA"):
+        chosen_hash = hashes.SHA512()
+    else:
+        chosen_hash = hashes.SHA256()
     try:
         public_key.verify(
             signature,
             receipt_text.encode("utf-8"),
             asym_padding.PKCS1v15(),
-            hashes.SHA256()
+            chosen_hash
         )
         return True
     except Exception:

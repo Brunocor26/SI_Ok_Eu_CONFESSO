@@ -38,6 +38,7 @@ export default function DecryptMessage() {
   const [encryptedBody, setEncryptedBody] = useState('');
   const [privateKey, setPrivateKey] = useState('');
   const [privateKeyFilename, setPrivateKeyFilename] = useState('');
+  const [hmac, setHmac] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [decryptedData, setDecryptedData] = useState(null);
@@ -58,7 +59,7 @@ export default function DecryptMessage() {
   const handleCodeSubmit = (e) => {
     e.preventDefault();
     if (!code.trim() || !password.trim() || !encryptedBody.trim() || !privateKey.trim()) {
-      setError('Preenche todos os campos obrigatórios.');
+      setError('Preenche todos os campos obrigatórios (incluindo código, password, corpo cifrado e chave privada).');
       return;
     }
     setError('');
@@ -81,21 +82,11 @@ export default function DecryptMessage() {
   const handleConfirmRead = async () => {
     setIsLoading(true);
     try {
-      const data = await api.messages.decrypt(code, password, encryptedBody);
+      const data = await api.messages.decrypt(code, password, encryptedBody, privateKey, hmac || null);
       setDecryptedData(data);
-
-      if (data.receipt_text && privateKey.trim()) {
-        try {
-          const signature = await signReceiptText(data.receipt_text, privateKey);
-          await api.receipts.confirmRead(code, signature);
-        } catch {
-          // Assinatura falhou mas a mensagem já foi decifrada — não bloquear o utilizador
-        }
-      }
-
       setStep(STEP_RESULT);
     } catch (err) {
-      setError(err.message || 'Código inválido ou mensagem não encontrada.');
+      setError(err.message || 'Erro ao decifrar a mensagem. Verifica as credenciais e a tua chave privada.');
       setStep(STEP_CODE);
     } finally {
       setIsLoading(false);
@@ -111,6 +102,7 @@ export default function DecryptMessage() {
     setEncryptedBody('');
     setPrivateKey('');
     setPrivateKeyFilename('');
+    setHmac('');
     setError('');
     setDecryptedData(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -182,6 +174,21 @@ export default function DecryptMessage() {
               placeholder="Cola aqui a mensagem cifrada..."
               spellCheck={false}
             />
+          </div>
+          <div className="flex flex-col gap-2 mt-2">
+            <label className="text-[12px] font-medium text-outline uppercase tracking-wider">Código HMAC <span className="text-outline-variant font-normal">(opcional)</span></label>
+            <div className="relative flex items-center">
+              <Key size={14} className="absolute left-3 text-outline-variant" />
+              <input
+                type="text"
+                className="w-full bg-surface-container-highest border border-outline-variant rounded p-4 pl-10 font-[JetBrains_Mono,monospace] text-[14px] tracking-[0.05em] text-on-surface focus:border-on-surface focus:ring-0 outline-none transition-colors"
+                value={hmac}
+                onChange={(e) => { setHmac(e.target.value); setError(''); }}
+                placeholder="Introduz o código HMAC se o tiveres..."
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-2 mt-2">
             <label className="text-[12px] font-medium text-outline uppercase tracking-wider">Chave Privada</label>
@@ -341,8 +348,8 @@ export default function DecryptMessage() {
       )}
 
       <div className="mt-8 text-center">
-        <button className="text-[13px] text-on-surface-variant hover:text-on-surface transition-colors" onClick={() => navigate('/login')}>
-          Tens conta? <span className="underline">Entrar para enviar mensagens</span>
+        <button className="text-[13px] text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" onClick={() => navigate('/send')}>
+          Queres enviar uma mensagem? <span className="underline">Ir para Enviar Mensagem</span>
         </button>
       </div>
     </Layout>

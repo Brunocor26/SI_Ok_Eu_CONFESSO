@@ -5,7 +5,7 @@ const navItems = [
   { key: 'send',    label: 'Enviar',      icon: Send,        path: '/send' },
   { key: 'decrypt', label: 'Desencriptar',icon: Unlock,      path: '/decrypt' },
   { key: 'verify',  label: 'Verificar',   icon: CheckCircle, path: '/verify' },
-  { key: 'profile', label: 'Perfil',      icon: User,        path: '/login' },
+  { key: 'register',label: 'Registo',     icon: User,        path: '/register' },
 ];
 
 export default function Layout({ children, activeTab }) {
@@ -23,7 +23,7 @@ export default function Layout({ children, activeTab }) {
         </div>
         {/* Desktop nav */}
         <nav className="hidden md:flex gap-6">
-          {navItems.slice(0, 3).map(({ key, label, icon: Icon, path }) => (
+          {navItems.map(({ key, label, icon: Icon, path }) => (
             <button
               key={key}
               onClick={() => navigate(path)}

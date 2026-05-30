@@ -8,6 +8,7 @@ export default function SendMessage() {
   const [recipientEmail, setRecipientEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [password, setPassword] = useState('');
   const [notificationEmail, setNotificationEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -17,14 +18,14 @@ export default function SendMessage() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!recipientEmail || !subject || !body.trim()) {
-      setError('Preenche todos os campos.');
+    if (!recipientEmail || !subject || !body.trim() || !password) {
+      setError('Preenche todos os campos (incluindo a tua password de acesso).');
       return;
     }
     setIsLoading(true);
     setError('');
     try {
-      const data = await api.messages.send(recipientEmail, subject, body, notificationEmail || null);
+      const data = await api.messages.send(recipientEmail, subject, body, notificationEmail || null, password);
       setSentCode(data.code);
     } catch (err) {
       setError(err.message || 'Erro ao enviar a mensagem.');
@@ -39,16 +40,12 @@ export default function SendMessage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleLogout = async () => {
-    await api.auth.logout().catch(() => {});
-    navigate('/login');
-  };
-
   const handleReset = () => {
     setSentCode(null);
     setRecipientEmail('');
     setSubject('');
     setBody('');
+    setPassword('');
     setNotificationEmail('');
     setCopied(false);
   };
@@ -63,10 +60,10 @@ export default function SendMessage() {
             <span className="text-[10px] font-semibold text-on-surface uppercase tracking-widest">Envio Seguro</span>
           </div>
           <button
-            className="text-[13px] text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1 group"
-            onClick={handleLogout}
+            className="text-[13px] text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1 group cursor-pointer"
+            onClick={() => navigate('/register')}
           >
-            Sair
+            Criar Acesso
             <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
           </button>
         </div>
@@ -90,7 +87,7 @@ export default function SendMessage() {
                 {sentCode}
               </code>
               <button
-                className="text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-2 px-3 py-1.5 border border-outline-variant rounded hover:bg-surface-container self-end sm:self-auto shrink-0"
+                className="text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-2 px-3 py-1.5 border border-outline-variant rounded hover:bg-surface-container self-end sm:self-auto shrink-0 cursor-pointer"
                 onClick={handleCopy}
                 title="Copiar"
               >
@@ -101,7 +98,7 @@ export default function SendMessage() {
             <p className="text-[13px] text-outline mt-1">Partilhe este código apenas através de um canal seguro (ex: Signal).</p>
           </div>
           <button
-            className="mt-2 text-[12px] font-medium text-on-surface-variant hover:text-on-surface border border-dashed border-outline-variant hover:border-outline rounded py-3 px-6 w-full transition-all flex items-center justify-center gap-2 hover:bg-surface-container-low"
+            className="mt-2 text-[12px] font-medium text-on-surface-variant hover:text-on-surface border border-dashed border-outline-variant hover:border-outline rounded py-3 px-6 w-full transition-all flex items-center justify-center gap-2 hover:bg-surface-container-low cursor-pointer"
             onClick={handleReset}
           >
             <Plus size={16} />
@@ -173,9 +170,25 @@ export default function SendMessage() {
           </div>
         </div>
 
+        <div className="flex flex-col gap-2">
+          <label className="text-[12px] font-medium text-on-surface-variant">Password de Acesso (16 caracteres)</label>
+          <div className="relative flex items-center">
+            <Lock size={14} className="absolute left-3 text-outline-variant" />
+            <input
+              type="password"
+              className="w-full bg-surface border border-outline-variant rounded py-2.5 pl-10 pr-3 text-[14px] text-on-surface focus:border-on-surface focus:outline-none transition-colors"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="A tua password de acesso"
+              maxLength={16}
+              autoComplete="current-password"
+            />
+          </div>
+        </div>
+
         <button
           type="button"
-          className="w-full bg-on-surface text-surface text-[12px] font-semibold uppercase tracking-wider rounded py-3.5 mt-2 flex items-center justify-center gap-2 hover:bg-surface-bright hover:text-on-surface transition-colors active:scale-[0.99] disabled:opacity-60"
+          className="w-full bg-on-surface text-surface text-[12px] font-semibold uppercase tracking-wider rounded py-3.5 mt-2 flex items-center justify-center gap-2 hover:bg-surface-bright hover:text-on-surface transition-colors active:scale-[0.99] disabled:opacity-60 cursor-pointer"
           onClick={handleSend}
           disabled={isLoading}
         >

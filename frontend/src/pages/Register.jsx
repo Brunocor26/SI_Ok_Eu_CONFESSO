@@ -17,6 +17,8 @@ const downloadFile = (content, filename) => {
 
 export default function Register() {
   const [generatedPassword, setGeneratedPassword] = useState('');
+  const [keyCipherAlgo, setKeyCipherAlgo] = useState('AES-256-CBC');
+  const [rsaKeySize, setRsaKeySize] = useState('2048');
   const [keys, setKeys] = useState(null); // { publicKey, privateKey }
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +30,7 @@ export default function Register() {
     setIsLoading(true);
     setError('');
     try {
-      const data = await api.auth.register();
+      const data = await api.auth.register(keyCipherAlgo, parseInt(rsaKeySize));
       setGeneratedPassword(data.password);
       setKeys({ publicKey: data.public_key, privateKey: data.private_key });
       setCopied(false);
@@ -72,6 +74,36 @@ export default function Register() {
                 </p>
               </div>
 
+              {/* Configurações avançadas de criptografia */}
+              <div className="flex flex-col gap-4 p-4 rounded bg-surface-container border border-outline-variant">
+                <h3 className="text-[13px] font-semibold text-on-surface uppercase tracking-wider">Parâmetros Criptográficos</h3>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-on-surface-variant">Cifra da Chave Privada</label>
+                  <select
+                    className="w-full bg-surface border border-outline-variant rounded p-2.5 text-[13px] text-on-surface focus:border-on-surface focus:outline-none transition-colors cursor-pointer"
+                    value={keyCipherAlgo}
+                    onChange={(e) => setKeyCipherAlgo(e.target.value)}
+                  >
+                    <option value="AES-256-CBC">AES-256-CBC (Recomendado)</option>
+                    <option value="AES-256-CTR">AES-256-CTR</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-on-surface-variant">Tamanho da Chave RSA</label>
+                  <select
+                    className="w-full bg-surface border border-outline-variant rounded p-2.5 text-[13px] text-on-surface focus:border-on-surface focus:outline-none transition-colors cursor-pointer"
+                    value={rsaKeySize}
+                    onChange={(e) => setRsaKeySize(e.target.value)}
+                  >
+                    <option value="2048">2048 bits (Rápido)</option>
+                    <option value="3072">3072 bits (Mais Seguro)</option>
+                    <option value="4096">4096 bits (Segurança Máxima)</option>
+                  </select>
+                </div>
+              </div>
+
               {error && (
                 <div className="flex items-center gap-2 text-error text-[13px] bg-error-container/20 border border-error/30 rounded px-3 py-2">
                   <TriangleAlert size={14} />
@@ -81,7 +113,7 @@ export default function Register() {
 
               <button
                 type="submit"
-                className="bg-on-surface text-surface w-full py-4 rounded text-[12px] font-medium uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-surface-bright hover:text-on-surface transition-colors active:scale-[0.99] disabled:opacity-60"
+                className="bg-on-surface text-surface w-full py-4 rounded text-[12px] font-medium uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-surface-bright hover:text-on-surface transition-colors active:scale-[0.99] disabled:opacity-60 cursor-pointer"
                 disabled={isLoading}
               >
                 {isLoading ? 'A gerar...' : 'Gerar Password e Chaves'}
@@ -149,10 +181,10 @@ export default function Register() {
 
               <button
                 type="button"
-                className="bg-on-surface text-surface w-full py-4 rounded text-[12px] font-medium uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-surface-bright hover:text-on-surface transition-colors active:scale-[0.99]"
-                onClick={() => navigate('/login')}
+                className="bg-on-surface text-surface w-full py-4 rounded text-[12px] font-medium uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-surface-bright hover:text-on-surface transition-colors active:scale-[0.99] cursor-pointer"
+                onClick={() => navigate('/send')}
               >
-                Ir para Login
+                Ir para Enviar Mensagem
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -162,8 +194,8 @@ export default function Register() {
         <footer className="text-center">
           <p className="text-[13px] text-outline">
             Já tem acesso?{' '}
-            <button className="text-on-background hover:text-primary underline hover:no-underline transition-colors ml-1" onClick={() => navigate('/login')}>
-              Entrar
+            <button className="text-on-background hover:text-primary underline hover:no-underline transition-colors ml-1 cursor-pointer" onClick={() => navigate('/send')}>
+              Enviar Mensagem
             </button>
           </p>
         </footer>

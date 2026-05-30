@@ -20,12 +20,12 @@ def verify_login(user_id: str, password: str) -> User | None:
         return user
     return None
 
-def register_user(user_id: str, password: str) -> User:
+def register_user(user_id: str, password: str, key_cipher_algo: str = "AES-256-CBC", rsa_key_size: int = 2048) -> tuple[User, str, str]:
     """
     Registers a new user given a user_id and password.
     1. Hashes the password and saves the User.
-    2. Generates an RSA key pair.
-    3. Encrypts the private key with the user's password.
+    2. Generates an RSA key pair (with configurable size).
+    3. Encrypts the private key with the user's password (with configurable cipher).
     4. Saves the UserKey.
     """
     if not user_id or not user_id.strip():
@@ -48,10 +48,10 @@ def register_user(user_id: str, password: str) -> User:
     db.session.flush()  # Para obter o user.id gerado
     
     # 2. Geração do par de chaves RSA
-    public_pem, private_pem = generate_rsa_key_pair()
+    public_pem, private_pem = generate_rsa_key_pair(key_size=rsa_key_size)
     
     # 3. Encriptação da private key com a password em plain-text localmente (zero-knowledge)
-    encrypted_priv, iv, priv_salt = encrypt_private_key(private_pem, password)
+    encrypted_priv, iv, priv_salt = encrypt_private_key(private_pem, password, key_cipher_algo)
     
     # 4. Gravar chaves na BD
     user_key = UserKey(
@@ -59,7 +59,9 @@ def register_user(user_id: str, password: str) -> User:
         public_key=public_pem,
         encrypted_private_key=encrypted_priv,
         private_key_iv=iv,
-        private_key_salt=priv_salt
+        private_key_salt=priv_salt,
+        key_cipher_algo=key_cipher_algo,
+        rsa_key_size=rsa_key_size
     )
     db.session.add(user_key)
     db.session.commit()

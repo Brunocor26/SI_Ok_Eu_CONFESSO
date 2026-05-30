@@ -22,9 +22,10 @@ const request = async (endpoint, options = {}) => {
 
 export const api = {
   auth: {
-    register: () =>
+    register: (key_cipher_algo, rsa_key_size) =>
       request("/auth/register", {
         method: "POST",
+        body: JSON.stringify({ key_cipher_algo, rsa_key_size }),
       }),
     login: (user_id, password) =>
       request("/auth/login", {
@@ -38,15 +39,15 @@ export const api = {
     me: () => request("/auth/me"),
   },
   messages: {
-    send: (recipient_email, subject, body, notification_email) =>
+    send: (recipient_email, subject, body, notification_email, password) =>
       request("/messages/send", {
         method: "POST",
-        body: JSON.stringify({ recipient_email, subject, body, notification_email: notification_email || null }),
+        body: JSON.stringify({ recipient_email, subject, body, notification_email: notification_email || null, password }),
       }),
-    decrypt: (code, password, encrypted_body) =>
+    decrypt: (code, password, encrypted_body, private_key, hmac) =>
       request("/messages/decrypt", {
         method: "POST",
-        body: JSON.stringify({ code, password, encrypted_body }),
+        body: JSON.stringify({ code, password, encrypted_body, private_key, hmac: hmac || null }),
       })
   },
   receipts: {

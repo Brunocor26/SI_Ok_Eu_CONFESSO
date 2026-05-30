@@ -5,10 +5,11 @@ from email.mime.text import MIMEText
 MAILPIT_HOST = 'localhost'
 MAILPIT_PORT = 1025
 
-def enviar_email_cifrado(destinatario, assunto, codigo_acesso, corpo_cifrado):
+def enviar_email_cifrado(destinatario, assunto, codigo_acesso, corpo_cifrado, hmac_code=""):
     texto = (
         f"Para ler este e-mail, aceda a https://OK-Eu-CONFESSO.xxx\n"
         f"e confirme a receção com o código: {codigo_acesso}\n\n"
+        f"Código HMAC (Integridade): {hmac_code}\n\n"
         f"--- CORPO CIFRADO ---\n{corpo_cifrado}\n--------------------"
     )
 
@@ -37,6 +38,8 @@ def enviar_email_cifrado(destinatario, assunto, codigo_acesso, corpo_cifrado):
       <a class="cta" href="http://localhost:5173/decrypt">Aceder ao Sistema</a>
       <p><strong>Código de Acesso:</strong></p>
       <div class="code-block">{codigo_acesso}</div>
+      <p><strong>Código HMAC (Verificação de Integridade):</strong></p>
+      <div class="code-block">{hmac_code}</div>
       <p><strong>Corpo da mensagem cifrado:</strong></p>
       <div class="code-block">{corpo_cifrado}</div>
       <p style="color:#888; font-size:13px;">Se não solicitou esta mensagem, ignore este email.</p>
