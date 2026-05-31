@@ -6,6 +6,7 @@ from flask import request, jsonify
 from app.routes import receipts_bp
 from app.models import Message, Receipt, UserKey
 from app.extensions import db
+from app.services.email import enviar_notificacao_leitura
 
 
 # ---------------------------------------------------------------------------
@@ -189,8 +190,11 @@ def submit_signature():
     # 6. Se a assinatura for válida, guardar permanentemente na base de dados
     receipt.signature = signature_b64
     receipt.signature_algorithm = "SHA256withRSA"
-    # Adicionamos a marcação de 'confirmed_read' aqui para completar o fluxo!
-    receipt.confirmed_read = True 
+    receipt.confirmed_read = True
     db.session.commit()
+
+    # 7. Notificar o emissor por email (se tiver indicado email de notificação)
+    if message.sender_notification_email:
+        enviar_notificacao_leitura(message.sender_notification_email, receipt.receipt_text)
 
     return jsonify({"message": "Assinatura SHA256withRSA verificada e guardada com sucesso!"})

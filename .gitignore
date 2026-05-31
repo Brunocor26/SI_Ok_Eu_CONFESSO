@@ -17,4 +17,5 @@ __pycache__/
 .env
 
 apresentacao/
-instance/
+frontend/package-lock.json
+backend/instance

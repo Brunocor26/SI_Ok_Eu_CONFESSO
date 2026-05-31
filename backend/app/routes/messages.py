@@ -102,13 +102,10 @@ def decrypt_message():
     if not receipt:
         return jsonify({"error": "Recibo não encontrado"}), 404
 
-    # --- Identificar o destinatário usando a estratégia de dupla procura ---
-    recipient_user = db.session.query(User).filter_by(user_id=receipt.recipient_email).first()
-    
-    if not recipient_user:
-        import hashlib
-        pwd_hash = hashlib.sha256(provided_password.encode("utf-8")).hexdigest()
-        recipient_user = db.session.query(User).filter_by(user_id=pwd_hash).first()
+    # --- Identificar o destinatário pela password fornecida ---
+    import hashlib
+    pwd_hash = hashlib.sha256(provided_password.encode("utf-8")).hexdigest()
+    recipient_user = db.session.query(User).filter_by(user_id=pwd_hash).first()
 
     if not recipient_user:
         return jsonify({"error": "Destinatário sem conta registada"}), 403
