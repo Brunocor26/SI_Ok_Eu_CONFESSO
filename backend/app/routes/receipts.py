@@ -187,14 +187,17 @@ def submit_signature():
     if not is_valid:
         return jsonify({"error": "Assinatura inválida: não corresponde à chave pública registada"}), 400
 
-    # 6. Se a assinatura for válida, guardar permanentemente na base de dados
+    # 6. Guardar valores necessários antes do commit (após commit os objetos ficam expirados)
+    notification_email = message.sender_notification_email
+    receipt_text_snapshot = receipt.receipt_text
+
     receipt.signature = signature_b64
     receipt.signature_algorithm = "SHA256withRSA"
     receipt.confirmed_read = True
     db.session.commit()
 
     # 7. Notificar o emissor por email (se tiver indicado email de notificação)
-    if message.sender_notification_email:
-        enviar_notificacao_leitura(message.sender_notification_email, receipt.receipt_text)
+    if notification_email:
+        enviar_notificacao_leitura(notification_email, receipt_text_snapshot)
 
     return jsonify({"message": "Assinatura SHA256withRSA verificada e guardada com sucesso!"})

@@ -4,7 +4,7 @@ from app.models import Message, Receipt, User
 from app.extensions import db
 from app.services.crypto import generate_code, generate_salt, derive_key, encrypt_body, compute_hmac, decrypt_body, verify_hmac, PBKDF2_ITERATIONS
 from app.services.auth import verify_login
-from app.services.email import enviar_email_cifrado, enviar_notificacao_leitura
+from app.services.email import enviar_email_cifrado
 import base64
 from datetime import datetime, timezone
 
