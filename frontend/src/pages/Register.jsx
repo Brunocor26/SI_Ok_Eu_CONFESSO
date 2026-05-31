@@ -162,19 +162,19 @@ export default function Register() {
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded border border-outline-variant bg-transparent text-on-background text-[12px] font-medium hover:bg-surface-container transition-colors"
                     >
                       <Download size={14} />
-                      Chave Pública
+                      Chave Pública (.pem)
                     </button>
                     <button
                       type="button"
-                      onClick={() => downloadFile(keys.privateKey, 'chave_privada.pem')}
+                      onClick={() => downloadFile(keys.privateKey, 'chave_privada.json')}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded border border-outline-variant bg-transparent text-on-background text-[12px] font-medium hover:bg-surface-container transition-colors"
                     >
                       <Download size={14} />
-                      Chave Privada
+                      Chave Privada Cifrada (.json)
                     </button>
                   </div>
                   <p className="text-[11px] text-outline">
-                    A chave privada só pode ser descarregada agora. Guarda-a num local seguro.
+                    A chave privada está cifrada com {keyCipherAlgo} e a tua password. Só pode ser descarregada agora.
                   </p>
                 </div>
               )}

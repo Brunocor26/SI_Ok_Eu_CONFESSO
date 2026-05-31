@@ -4,6 +4,7 @@ import secrets
 import json
 
 from cryptography.hazmat.primitives import hashes, hmac, serialization
+from cryptography.hazmat.primitives import padding as sym_padding
 from cryptography.hazmat.primitives.asymmetric import rsa, padding as asym_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -138,6 +139,42 @@ def generate_rsa_key_pair(key_size: int = 2048) -> tuple[str, str]:
     ).decode("ascii")
 
     return public_pem, private_pem
+
+
+def encrypt_private_key(private_pem: str, password: str, cipher_algo: str = "AES-256-CBC") -> str:
+    """Cifra a chave privada PEM com uma chave AES-256 derivada via PBKDF2.
+
+    Requisito do enunciado (ponto 2): "a chave privada é cifrada com uma derivação
+    segura da palavra-passe de acesso. A cifra a utilizar é a AES-256-CBC."
+
+    Suporta AES-256-CBC (padrão) e AES-256-CTR (ponto bónus 3).
+    Devolve uma string JSON contendo todos os parâmetros necessários para a decifragem no browser.
+    """
+    salt = generate_salt()             # 16 bytes aleatórios para o PBKDF2
+    key  = derive_key(password, salt)  # Chave de 256 bits via PBKDF2-SHA256
+    iv   = secrets.token_bytes(16)     # 128-bit IV / nonce
+    data = private_pem.encode("utf-8")
+
+    if cipher_algo == "AES-256-CTR":
+        cipher_obj = Cipher(algorithms.AES(key), modes.CTR(iv))
+        encryptor  = cipher_obj.encryptor()
+        ciphertext = encryptor.update(data) + encryptor.finalize()
+    else:
+        # AES-256-CBC com padding PKCS7 padrão
+        padder     = sym_padding.PKCS7(128).padder()
+        padded     = padder.update(data) + padder.finalize()
+        cipher_obj = Cipher(algorithms.AES(key), modes.CBC(iv))
+        encryptor  = cipher_obj.encryptor()
+        ciphertext = encryptor.update(padded) + encryptor.finalize()
+
+    return json.dumps({
+        "cipher":     cipher_algo,
+        "kdf":        "PBKDF2-SHA256",
+        "iterations": PBKDF2_ITERATIONS,
+        "salt":       base64.b64encode(salt).decode("ascii"),
+        "iv":         base64.b64encode(iv).decode("ascii"),
+        "ciphertext": base64.b64encode(ciphertext).decode("ascii"),
+    })
 
 
 

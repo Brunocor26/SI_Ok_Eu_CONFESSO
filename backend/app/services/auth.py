@@ -1,6 +1,6 @@
 from app.extensions import db
 from app.models import User, UserKey
-from app.services.crypto import hash_password, derive_key, PBKDF2_ITERATIONS, generate_rsa_key_pair
+from app.services.crypto import hash_password, derive_key, PBKDF2_ITERATIONS, generate_rsa_key_pair, encrypt_private_key
 import base64
 import hmac
 
@@ -49,8 +49,12 @@ def register_user(user_id: str, password: str, key_cipher_algo: str = "AES-256-C
     
     # 2. Geração do par de chaves RSA
     public_pem, private_pem = generate_rsa_key_pair(key_size=rsa_key_size)
-    
-    # 3. Gravar apenas a chave pública na BD (a privada NUNCA é armazenada)
+
+    # 3. Cifra a chave privada com AES-256-CBC (ou CTR) usando PBKDF2 da password
+    #    Nunca é armazenada em claro — o utilizador guarda o ficheiro cifrado
+    encrypted_private_key = encrypt_private_key(private_pem, password, cipher_algo=key_cipher_algo)
+
+    # 4. Gravar apenas a chave pública na BD (a privada NUNCA é armazenada)
     user_key = UserKey(
         user_id=user.id,
         public_key=public_pem,
@@ -59,4 +63,4 @@ def register_user(user_id: str, password: str, key_cipher_algo: str = "AES-256-C
     db.session.add(user_key)
     db.session.commit()
 
-    return user, public_pem, private_pem
+    return user, public_pem, encrypted_private_key

@@ -10,6 +10,7 @@ const STEP_CONFIRM_READ = 3;
 const STEP_RESULT = 4;
 const STEP_DENIED = 5;
 
+// SHA256withRSA = RSASSA-PKCS1-v1_5 + SHA-256 (conforme enunciado, ponto 6)
 async function signReceiptText(receiptText, privatePem) {
   const pemContents = privatePem
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
@@ -29,6 +30,45 @@ async function signReceiptText(receiptText, privatePem) {
     new TextEncoder().encode(receiptText)
   );
   return btoa(String.fromCharCode(...new Uint8Array(signature)));
+}
+
+// Decifra o JSON da chave privada cifrada usando a password do utilizador.
+// Usa PBKDF2-SHA256 (mesmos parâmetros do backend) para derivar a chave AES-256,
+// depois decifra com AES-256-CBC ou AES-256-CTR inteiramente no browser.
+async function decryptPrivateKeyPem(encryptedKeyStr, password) {
+  // Retrocompatibilidade: se o ficheiro já for um PEM em texto limpo, devolve tal e qual
+  if (encryptedKeyStr.trim().startsWith('-----BEGIN')) return encryptedKeyStr;
+
+  const meta = JSON.parse(encryptedKeyStr);
+  const salt       = Uint8Array.from(atob(meta.salt),       c => c.charCodeAt(0));
+  const iv         = Uint8Array.from(atob(meta.iv),         c => c.charCodeAt(0));
+  const ciphertext = Uint8Array.from(atob(meta.ciphertext), c => c.charCodeAt(0));
+  const isCBC      = meta.cipher === 'AES-256-CBC';
+
+  // Deriva a mesma chave de 256 bits que o backend derivou
+  const pwKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  const aesKey = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: meta.iterations, hash: 'SHA-256' },
+    pwKey,
+    { name: isCBC ? 'AES-CBC' : 'AES-CTR', length: 256 },
+    false,
+    ['decrypt']
+  );
+
+  const decrypted = await crypto.subtle.decrypt(
+    isCBC
+      ? { name: 'AES-CBC', iv }
+      : { name: 'AES-CTR', counter: iv, length: 128 },
+    aesKey,
+    ciphertext
+  );
+  return new TextDecoder().decode(decrypted);
 }
 
 export default function DecryptMessage() {
@@ -82,7 +122,19 @@ export default function DecryptMessage() {
   const handleConfirmRead = async () => {
     setIsLoading(true);
     try {
-      const data = await api.messages.decrypt(code, password, encryptedBody, privateKey, hmac || null);
+      // 0. Decifrar a chave privada no browser com a password do utilizador
+      //    A chave privada cifrada NUNCA é enviada para o servidor
+      const privatePem = await decryptPrivateKeyPem(privateKey, password);
+
+      // 1. Decifrar a mensagem — a chave privada NÃO é enviada
+      const data = await api.messages.decrypt(code, password, encryptedBody, hmac || null);
+
+      // 2. Assinar o receipt_text localmente no browser
+      const signature = await signReceiptText(data.receipt_text, privatePem);
+
+      // 3. Enviar apenas a assinatura para o servidor (nunca a chave privada)
+      await api.receipts.submitSignature(code, signature);
+
       setDecryptedData(data);
       setStep(STEP_RESULT);
     } catch (err) {
@@ -191,26 +243,25 @@ export default function DecryptMessage() {
             </div>
           </div>
           <div className="flex flex-col gap-2 mt-2">
-            <label className="text-[12px] font-medium text-outline uppercase tracking-wider">Chave Privada</label>
+            <label className="text-[12px] font-medium text-outline uppercase tracking-wider">Chave Privada Cifrada</label>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pem"
+              accept=".json,.pem"
               className="hidden"
               onChange={handlePrivateKeyFile}
             />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`w-full flex items-center gap-3 p-4 rounded border transition-colors text-left ${
-                privateKeyFilename
+              className={`w-full flex items-center gap-3 p-4 rounded border transition-colors text-left ${privateKeyFilename
                   ? 'border-on-surface bg-surface-container text-on-surface'
                   : 'border-outline-variant bg-surface-container-highest text-outline hover:border-outline'
-              }`}
+                }`}
             >
               <FileKey size={16} className={privateKeyFilename ? 'text-primary' : 'text-outline-variant'} />
               <span className="font-[JetBrains_Mono,monospace] text-[13px] truncate">
-                {privateKeyFilename || 'Selecionar ficheiro chave_privada.pem…'}
+                {privateKeyFilename || 'Selecionar chave_privada.json (ou .pem)…'}
               </span>
             </button>
             <p className="text-[12px] text-outline-variant mt-1">

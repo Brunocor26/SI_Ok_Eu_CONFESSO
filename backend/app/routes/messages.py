@@ -20,7 +20,7 @@ def send_message():
     provided_password = data["password"]
     notification_email = (data.get("notification_email") or "").strip().lower() or None
 
-    # --- Validate sender password and authenticate ---
+    # --- Validar a password do remetente e autenticar ---
     import hashlib
     pwd_hash = hashlib.sha256(provided_password.encode("utf-8")).hexdigest()
     sender_user = db.session.query(User).filter_by(user_id=pwd_hash).first()
@@ -32,7 +32,7 @@ def send_message():
 
     sender_id = sender_user.id
 
-    # Generates code and crypto materials
+    # Gera o código e os materiais criptográficos
     code = generate_code()
     salt = generate_salt()
     
@@ -41,7 +41,7 @@ def send_message():
     encrypted_body_b64, iv_nonce_b64 = encrypt_body(plain_text_body, key)
     msg_hmac = compute_hmac(encrypted_body_b64, key)
     
-    # Save the message
+    # Guardar a mensagem
     new_message = Message(
         sender_id=sender_id,
         recipient_email=recipient_email,
@@ -59,8 +59,8 @@ def send_message():
     db.session.add(new_message)
     db.session.flush() # get id
 
-    # Save the pending receipt
-    recipient_user = db.session.query(User).filter_by(user_id=recipient_email).first() # Just in case it's an internal user
+    # Guardar o recibo pendente
+    recipient_user = db.session.query(User).filter_by(user_id=recipient_email).first() # Por precaução, caso seja um utilizador interno
     recipient_user_id = recipient_user.id if recipient_user else None
 
     new_receipt = Receipt(
@@ -73,7 +73,7 @@ def send_message():
     db.session.add(new_receipt)
     db.session.commit()
 
-    # Send the email
+    # Enviar o email
     enviar_email_cifrado(recipient_email, subject, code, encrypted_body_b64, msg_hmac)
 
     return jsonify({"message": "Mensagem enviada com sucesso", "code": code}), 201
@@ -81,29 +81,28 @@ def send_message():
 @messages_bp.route("/decrypt", methods=["POST"])
 def decrypt_message():
     data = request.get_json()
-    if not data or not data.get("code") or not data.get("password") or not data.get("encrypted_body") or not data.get("private_key"):
-        return jsonify({"error": "Parâmetros em falta (código, password, corpo cifrado ou chave privada)"}), 400
+    if not data or not data.get("code") or not data.get("password") or not data.get("encrypted_body"):
+        return jsonify({"error": "Parâmetros em falta (código, password ou corpo cifrado)"}), 400
 
     code = data["code"]
     provided_password = data["password"]
     provided_encrypted_body = data["encrypted_body"]
-    private_key_pem = data["private_key"]
 
     message = db.session.query(Message).filter_by(code=code).first()
 
     if not message:
         return jsonify({"error": "Mensagem não encontrada"}), 404
 
-    # Verify that the provided encrypted body matches the one in DB
+    # Verificar se o corpo cifrado fornecido corresponde ao que está na BD
     if message.encrypted_body != provided_encrypted_body:
         return jsonify({"error": "O corpo cifrado fornecido não corresponde à mensagem original."}), 400
 
-    # --- Validate receipt existence ---
+    # --- Validar existência do recibo ---
     receipt = db.session.query(Receipt).filter_by(message_id=message.id).first()
     if not receipt:
         return jsonify({"error": "Recibo não encontrado"}), 404
 
-    # --- Identify recipient using the dual-lookup strategy ---
+    # --- Identificar o destinatário usando a estratégia de dupla procura ---
     recipient_user = db.session.query(User).filter_by(user_id=receipt.recipient_email).first()
     
     if not recipient_user:
@@ -117,31 +116,20 @@ def decrypt_message():
     if not verify_login(recipient_user.user_id, provided_password):
         return jsonify({"error": "Password incorreta."}), 401
 
-    # --- Verify that the identified user matches the receipt (if already bound) ---
+    # --- Verificar se o utilizador identificado corresponde ao recibo (se já estiver associado) ---
     if receipt.recipient_user_id and receipt.recipient_user_id != recipient_user.id:
         return jsonify({"error": "Esta mensagem foi enviada para outro destinatário."}), 403
 
-    # --- Bind receipt to recipient if not already bound ---
+    # --- Associar o recibo ao destinatário, se ainda não estiver ---
     if not receipt.recipient_user_id:
         receipt.recipient_user_id = recipient_user.id
         db.session.commit()
 
-    # --- Validate private key matches public key ---
-    from app.models import UserKey
-    user_key = db.session.query(UserKey).filter_by(user_id=recipient_user.id).first()
-    if not user_key:
-        return jsonify({"error": "Chave pública do destinatário não encontrada"}), 404
+    # A validação da chave privada já não é feita aqui, pois o backend nunca
+    # deve ter acesso à chave privada. A assinatura do recibo ocorre localmente
+    # no browser e é enviada para o endpoint /receipts/submit-signature.
 
-    from app.services.crypto import validate_private_key_matches_public, sign_receipt
-    try:
-        matches = validate_private_key_matches_public(private_key_pem, user_key.public_key)
-    except Exception:
-        return jsonify({"error": "Chave privada inválida (PEM malformado)"}), 400
-
-    if not matches:
-        return jsonify({"error": "A chave privada fornecida não corresponde à pública registada"}), 401
-
-    # --- Optional: If HMAC-SHA256 was provided in payload, verify it! ---
+    # --- Opcional: Se o HMAC-SHA256 foi fornecido no payload, verificar! ---
     salt = base64.b64decode(message.code_salt)
     key = derive_key(code, salt, iterations=message.pbkdf2_iterations)
 
@@ -154,24 +142,17 @@ def decrypt_message():
         if provided_hmac and provided_hmac != message.hmac:
             return jsonify({"error": "O HMAC fornecido é inválido."}), 400
 
-    # --- Decrypt the message body ---
+    # --- Decifrar o corpo da mensagem ---
     decrypted_text = decrypt_body(message.encrypted_body, key, message.iv_nonce)
 
-    # --- Generate receipt text and sign it on the server side ---
+    # --- Gera o texto do recibo para o frontend assinar ---
     if not receipt.confirmed_read:
         receipt_text = f"Recibo de Leitura - Mensagem: {message.id} - Destinatário: {receipt.recipient_email} - Data: {datetime.now(timezone.utc).isoformat()}"
-        hash_algo = receipt.signature_algorithm or "SHA-256"
-        signature = sign_receipt(receipt_text, private_key_pem, hash_algo)
-
+        
         receipt.receipt_text = receipt_text
-        receipt.signature = signature
-        receipt.confirmed_read = True
-        receipt.confirmed_received = True
+        # Não guardamos a assinatura aqui, nem marcamos como confirmed_read.
+        # Isso só acontece quando o frontend envia a assinatura para /submit-signature
         db.session.commit()
-
-        # Send notification email
-        if message.sender_notification_email:
-            enviar_notificacao_leitura(message.sender_notification_email, receipt_text)
 
     return jsonify({
         "subject": message.subject,

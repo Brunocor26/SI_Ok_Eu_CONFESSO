@@ -33,10 +33,10 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ recipient_email, subject, body, notification_email: notification_email || null, password }),
       }),
-    decrypt: (code, password, encrypted_body, private_key, hmac) =>
+    decrypt: (code, password, encrypted_body, hmac) =>
       request("/messages/decrypt", {
         method: "POST",
-        body: JSON.stringify({ code, password, encrypted_body, private_key, hmac: hmac || null }),
+        body: JSON.stringify({ code, password, encrypted_body, hmac: hmac || null }),
       })
   },
   receipts: {
@@ -49,6 +49,11 @@ export const api = {
       request("/receipts/check", {
         method: "POST",
         body: JSON.stringify({ code }),
+      }),
+    submitSignature: (code, signature) =>
+      request("/receipts/submit-signature", {
+        method: "POST",
+        body: JSON.stringify({ code, signature }),
       }),
   }
 };
